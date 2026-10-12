@@ -1,0 +1,169 @@
+[
+  {
+    "id": "karnataka",
+    "region": "Karnataka",
+    "type": "individual",
+    "name": "S. Abiramaiah",
+    "role": "Karnataka State President",
+    "description": "We are delighted to inform you of your appointment as the Karnataka State President, within the Maha Seva Dal organization. This decision comes as a result of the organization's strong belief in your potential to significantly contribute to our mission of serving the poor people's, developing society, and fostering youth development in sports and education.",
+    "responsibilities": [
+      "Spearheading and coordinating Seva activities aimed at assisting the underprivileged in Karnataka State.",
+      "Developing and implementing programs focused on societal development and upliftment.",
+      "Leading initiatives that promote youth engagement in sports and provide educational support.",
+      "Building and nurturing a strong network of volunteers and supporters within the Karnataka State.",
+      "Representing Maha Seva Dal at Karnataka forums and collaborating with relevant Stakeholders."
+    ],
+    "effectiveDate": "15-10-2025"
+  },
+  {
+    "id": "tamil-nadu-legal-wing",
+    "region": "Tamil Nadu Legal Wing",
+    "type": "team",
+    "description": "We are pleased to share that the Tamil Nadu Legal Wing of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Srinivasan under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "Y.Sasikumar", "post": "President" },
+      { "name": "G Davegil", "post": "General Secretary" },
+      { "name": "N Paramasivam", "post": "General Secretary" },
+      { "name": "S Susannah", "post": "General Secretary" },
+      { "name": "M B Balumahendran", "post": "General Secretary" },
+      { "name": "K Asok Kumar Ram", "post": "Vice President" },
+      { "name": "Durai N Sathish Raj", "post": "Vice President" },
+      { "name": "C Ramesh", "post": "Vice President" },
+      { "name": "O Ayyar", "post": "Vice President" },
+      { "name": "Solaipandian", "post": "Vice President" },
+      { "name": "S Muthu Kumar Raja", "post": "Treasurer" },
+      { "name": "R Saravana Kumar", "post": "Secretary" },
+      { "name": "C Ragavendran", "post": "Secretary" }
+    ]
+  },
+  {
+    "id": "jharkhand",
+    "region": "Jharkhand",
+    "type": "team",
+    "description": "We are pleased to share that the Jharkhand State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "SHRI IRFAN ALI JT.", "post": "PRESIDENT" },
+      { "name": "SHRI HANEEF AHMED", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI MOHD. IMRAN", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI SHWETANK VEDI", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI GAGAN TANWAR", "post": "GEN. SECRETARY" },
+      { "name": "SHRI SANJAY GHALOTH", "post": "GEN. SECRETARY" },
+      { "name": "SHRI YOGESH KALYAN", "post": "TREASURER" },
+      { "name": "SHRI TULSI DAS", "post": "SECRETARY" },
+      { "name": "SHRI DEV DUTT SHARMA", "post": "SECRETARY" },
+      { "name": "SH. YOGESH SHARMA", "post": "SECRETARY" },
+      { "name": "SHRI KALE KUMAR", "post": "SECRETARY" },
+      { "name": "SH. ABDUL AMIR", "post": "SECRETARY" }
+    ]
+  },
+  {
+    "id": "gujarat",
+    "region": "Gujarat",
+    "type": "team",
+    "description": "We are pleased to share that the Gujarat State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "SH. DINESH MALIK", "post": "PRESIDENT" },
+      { "name": "MRS. SANGEETA TANEJA", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI S. AMARJEET SINGH", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI H.B. SINHA", "post": "GEN. SECRETARY" },
+      { "name": "SHRI R.K. BALI", "post": "GEN. SECRETARY" },
+      { "name": "SHRI DEEPAK BAWEJA", "post": "SECRETARY" },
+      { "name": "SHRI BHARAT MITRA", "post": "SECRETARY" },
+      { "name": "SHRI AJAY KUMAR SURI", "post": "SECRETARY" },
+      { "name": "SHRI RAJENDER SAXENA", "post": "SECRETARY" },
+      { "name": "SH. SUNDER SHARMA", "post": "SECRETARY" }
+    ]
+  },
+  {
+    "id": "rajasthan",
+    "region": "Rajasthan",
+    "type": "team",
+    "description": "We are pleased to share that the Rajasthan State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "SH. NADEEM MALIK", "post": "PRESIDENT" },
+      { "name": "SH. DR. SANJAY DHINGRA", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI MARY MICHAEL", "post": "VICE-PRESIDENT" },
+      { "name": "SH. DR. VIJAY DHINGRA", "post": "GEN. SECRETARY" },
+      { "name": "SHRI F.C. SHARMA", "post": "GEN. SECRETARY" },
+      { "name": "SH. BHISHAM LAL", "post": "TREASURER" },
+      { "name": "SH. S.P. GUPTA", "post": "SECRETARY" },
+      { "name": "SH. R.L. DUA", "post": "SECRETARY" },
+      { "name": "SHRI R. S. DEWAN", "post": "SECRETARY" },
+      { "name": "SH. D.M. NARANG", "post": "SECRETARY" },
+      { "name": "SHRI RAJESH VIJ", "post": "SECRETARY" }
+    ]
+  },
+  {
+    "id": "odisha",
+    "region": "Odisha",
+    "type": "team",
+    "description": "We are pleased to share that the Odisha State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "SH. M.K. OBERAI", "post": "PRESIDENT" },
+      { "name": "SH. S.N. GOEL", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI V.K. BHATIA", "post": "VICE-PRESIDENT" },
+      { "name": "SH. AFZAL SHAH", "post": "GEN. SECRETARY" },
+      { "name": "SHRI HARCHARAN SINGH", "post": "GEN. SECRETARY" },
+      { "name": "SHRI VIPIN MEHRA", "post": "GEN. SECRETARY" },
+      { "name": "SH. R.C. GUPTA", "post": "GEN. SECRETARY" },
+      { "name": "SH. BRIJ LAL", "post": "SECRETARY" },
+      { "name": "SHRI A. K. GERA", "post": "SECRETARY" },
+      { "name": "SH. S.P. GUPTA", "post": "SECRETARY" },
+      { "name": "SH. R.L. DUA", "post": "SECRETARY" },
+      { "name": "SH. MADAN KHORWAL", "post": "SECRETARY" },
+      { "name": "SH. MOHD. RIZWAN", "post": "SECRETARY" },
+      { "name": "SH. MOHD. NASIM", "post": "SECRETARY" }
+    ]
+  },
+  {
+    "id": "tamilnadu",
+    "region": "Tamil Nadu",
+    "type": "team",
+    "description": "We are pleased to share that the Tamilnadu State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "S. Srinivan", "post": "President" },
+      { "name": "KA. Pandian", "post": "General Secretary" },
+      { "name": "Kumaravel", "post": "General Secretary" },
+      { "name": "Sampath Kuamr", "post": "Secretary" },
+      { "name": "Mohan Kumar", "post": "Secretary" },
+      { "name": "Kathiravan", "post": "Secretary" },
+      { "name": "Arivalagan", "post": "Secretary" },
+      { "name": "Karthik", "post": "Programe Incharge" }
+    ]
+  },
+  {
+    "id": "north-east-india",
+    "region": "North East India",
+    "type": "individual",
+    "name": "T Ashuhrii Romeo",
+    "role": "North east India Incharge",
+    "description": "We are delighted to inform you of your appointment as the North east India Incharge within the Maha Seva Dal organization. This decision comes as a result of the organization's strong belief in your potential to significantly contribute to our mission of serving the poor people's, developing society, and fostering youth development in sports and education.",
+    "responsibilities": [
+      "Spearheading and coordinating Seva activities aimed at assisting the underprivileged in North east India.",
+      "Developing and implementing programs focused on societal development and upliftment.",
+      "Leading initiatives that promote youth engagement in sports and provide educational support.",
+      "Building and nurturing a strong network of volunteers and supporters within the North east India.",
+      "Representing Maha Seva Dal at North east India forums and collaborating with relevant Stakeholders."
+    ],
+    "effectiveDate": "29-04-2025"
+  },
+  {
+    "id": "uttarakhand",
+    "region": "Uttarakhand",
+    "type": "team",
+    "description": "We are pleased to share that the Uttarakhand State Team of the Maha Seva Dal has been successfully established. The team was appointed by Mr.S. Shree Ram gopu under the direct advice of National Advisor Mr. M. Chuba Ao. We extent our congratulation to the new appointees and look forwad to their contributions.",
+    "members": [
+      { "name": "SH. SATNAM ARORA", "post": "PRESIDENT" },
+      { "name": "SH. CHAMAN LAL MARWAH", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI GHANSHYAM SINGH", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI J.L. MEHTA", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI O.P. KALRA", "post": "VICE-PRESIDENT" },
+      { "name": "SHRI ASHOK MALHOTRA", "post": "GEN. SECRETARY" },
+      { "name": "SH. SUDHIR BERI", "post": "GEN. SECRETARY" },
+      { "name": "SH. JAGDEEP SINGH BHATIA", "post": "TREASURER" },
+      { "name": "SHRI RAM KUMAR BALI", "post": "SECRETARY" },
+      { "name": "SH. R.L. DHAWAN", "post": "SECRETARY" },
+      { "name": "SH. A.L. MALHOTRA", "post": "SECRETARY" }
+    ]
+  }
+]

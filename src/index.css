@@ -1,0 +1,162 @@
+/* ════════════════════════════════════════════════════════════════════
+   Maha Seva Dal — BJP Official Color System
+   Kesari Saffron: #FF9933 (Indian Flag exact)
+   BJP Orange:     #FF6200 (BJP Flag/Logo exact)
+   India Green:    #138808 (Indian Flag exact)
+   Ashoka Navy:    #000080 (Ashoka Chakra)
+   ════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Custom Properties ───────────────────────────────────────── */
+@layer base {
+  :root {
+    /* ── Background / Surface Tokens ── */
+    --canvas:               38 33% 97%;   /* #faf9f5 */
+    --surface-soft:         38 33% 94%;   /* #f5f0e8 */
+    --surface-card:         38 27% 90%;   /* #efe9de */
+    --surface-cream-strong: 38 27% 86%;   /* #e8e0d2 */
+
+    --surface-dark:          38 27% 90%;
+    --surface-dark-elevated: 38 33% 94%;
+    --surface-dark-soft:     38 33% 97%;
+
+    /* ── BJP Primary: Deep Saffron (#FF6200) ── */
+    --primary:               22 100% 49%;  /* #FF6200 BJP official orange */
+    --primary-active:        20 100% 42%;  /* #D65000 darker hover */
+    --primary-disabled:      38 22% 88%;  /* #e6dfd8 */
+
+    /* ── Text Tokens ── */
+    --ink:                   30 3% 8%;    /* #141413 */
+    --body-strong:           30 3% 14%;   /* #252523 */
+    --body:                  60 2% 23%;   /* #3d3d3a */
+    --muted:                 45 4% 41%;   /* #6c6a64 */
+    --muted-soft:            43 5% 53%;   /* #8e8b82 */
+
+    --hairline:              38 22% 88%;  /* #e6dfd8 */
+    --hairline-soft:         38 22% 90%;  /* #ebe6df */
+
+    --on-primary:            0 0% 100%;   /* #ffffff */
+    --on-dark:               30 3% 8%;
+    --on-dark-soft:          60 2% 23%;
+
+    /* ── Official Accent Tokens ── */
+    --accent-teal:           115 85% 28%; /* #138808 India Flag Green */
+    --accent-amber:          36 100% 60%; /* #FF9933 India Flag Kesari */
+
+    --border:                38 22% 88%;
+    --input:                 38 22% 88%;
+    --ring:                  22 100% 49%;
+    --background:            38 33% 97%;
+    --foreground:            30 3% 8%;
+    --card:                  38 27% 90%;
+    --card-foreground:       30 3% 8%;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased font-sans selection:bg-[#FF6200] selection:text-white;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+}
+
+/* ── Custom Thin Editorial Scrollbar ────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d8cfc4;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FF6200;
+}
+
+/* ── Typography & Display Utility Classes ──────────────────────── */
+.font-display {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.font-body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Component Primitives (BJP Official Colors) ─────────────────── */
+@layer components {
+
+  /* Primary Button — BJP Orange (#FF6200) */
+  .btn-primary-coral {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6200] text-white font-medium text-sm transition-all duration-200 hover:bg-[#D65000] active:scale-[0.98] shadow-sm disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Secondary Button — India Green (#138808) */
+  .btn-secondary-green {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#138808] text-white font-medium text-sm transition-all duration-200 hover:bg-[#0B6623] active:scale-[0.98] shadow-sm;
+  }
+
+  /* Secondary Button — Cream with BJP Orange Hover */
+  .btn-secondary-cream {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-card border border-hairline text-ink font-medium text-sm transition-all duration-200 hover:border-[#FF6200] hover:text-[#FF6200] active:scale-[0.98];
+  }
+
+  /* Secondary Button — Light Canvas Surface */
+  .btn-secondary-on-dark {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-canvas border border-hairline text-ink font-medium text-sm transition-all duration-200 hover:border-[#FF6200] hover:text-[#FF6200] active:scale-[0.98];
+  }
+
+  /* Card — Light Cream Surface */
+  .card-feature-cream {
+    @apply bg-surface-card border border-hairline rounded-xl p-8 transition-all duration-300 hover:border-[#FF6200]/40 hover:shadow-md;
+  }
+
+  /* Card — Light Showcase Surface */
+  .card-showcase-dark {
+    @apply bg-surface-card text-ink border border-hairline rounded-xl p-8 transition-all duration-300 hover:border-[#FF6200]/40 shadow-sm;
+  }
+
+  /* Full-bleed Indian Tricolor Gradient — Kesari → White-warm → India Green */
+  .card-callout-coral {
+    @apply bg-gradient-to-r from-[#FF6200] via-[#FF9933] to-[#138808] text-white rounded-2xl p-10 md:p-14 shadow-lg;
+  }
+
+  /* Editorial Pill Badges */
+  .badge-pill-cream {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-surface-soft text-ink border border-hairline;
+  }
+
+  .badge-coral-fill {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FF6200] text-white;
+  }
+
+  .badge-green-fill {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#138808] text-white;
+  }
+
+  /* Timeline Connector Line */
+  .timeline-hairline {
+    @apply border-l-2 border-hairline pl-6 py-4 relative;
+  }
+
+  /* Modular Tile */
+  .tile-connector {
+    @apply bg-surface-soft border border-hairline p-6 rounded-lg transition-colors hover:border-[#FF6200];
+  }
+
+  /* Section Padding Standard */
+  .section-editorial {
+    @apply py-20 lg:py-28;
+  }
+}
