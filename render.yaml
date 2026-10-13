@@ -3,7 +3,7 @@ services:
     name: msd-backend
     env: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install --no-audit
     startCommand: npm start
     plan: free
     healthCheckPath: /
