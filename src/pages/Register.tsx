@@ -149,6 +149,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     idProofType: "Aadhaar Card",
     idProofNumber: "",
     pledgeAccepted: true,
+    termsAccepted: true,
   });
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -192,7 +193,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
 
       // If member is APPROVED, generate QR code for the ID card
       if (json.member.status === "APPROVED") {
-        const qrText = `https://mahasevadal.org/verify?id=${json.member.registrationId}&name=${encodeURIComponent(
+        const qrText = `https://mahasevadal.com/verify?id=${json.member.registrationId}&name=${encodeURIComponent(
           json.member.fullName
         )}&wing=${encodeURIComponent(json.member.wing)}`;
         const qr = await QRCode.toDataURL(qrText, { width: 180, margin: 1 });
@@ -242,6 +243,8 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     if (currentStep === 4) {
       if (!formData.pledgeAccepted)
         return "You must accept the Maha Seva Dal 1947 Seva Pledge to enroll.";
+      if (!formData.termsAccepted)
+        return "You must agree to the Terms & Conditions and Privacy Policy to enroll.";
     }
     return null;
   };
@@ -317,7 +320,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
               onClick={() => setActiveTab("register")}
               className={`pb-3 px-4 font-semibold text-xs sm:text-sm transition-all border-b-2 flex items-center gap-2 ${
                 activeTab === "register"
-                  ? "border-[#cc785c] text-[#cc785c]"
+                  ? "border-[#FF6200] text-[#FF6200]"
                   : "border-transparent text-muted-editorial hover:text-ink"
               }`}
             >
@@ -329,7 +332,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
               onClick={() => setActiveTab("status")}
               className={`pb-3 px-4 font-semibold text-xs sm:text-sm transition-all border-b-2 flex items-center gap-2 ${
                 activeTab === "status"
-                  ? "border-[#cc785c] text-[#cc785c]"
+                  ? "border-[#FF6200] text-[#FF6200]"
                   : "border-transparent text-muted-editorial hover:text-ink"
               }`}
             >
@@ -466,7 +469,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                     </button>
                     <Link
                       to="/"
-                      className="text-xs text-[#cc785c] hover:underline font-medium px-3 py-2 flex items-center justify-center whitespace-nowrap"
+                      className="text-xs text-[#FF6200] hover:underline font-medium px-3 py-2 flex items-center justify-center whitespace-nowrap"
                     >
                       Return to Homepage
                     </Link>
@@ -495,7 +498,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                             isCompleted
                               ? "bg-emerald-600 text-white shadow-sm"
                               : isActive
-                              ? "bg-[#cc785c] text-white ring-4 ring-[#cc785c]/20 shadow-md"
+                              ? "bg-[#FF6200] text-white ring-4 ring-[#FF6200]/20 shadow-md"
                               : "bg-surface-soft text-muted-editorial border border-hairline"
                           }`}
                         >
@@ -503,7 +506,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                         </div>
                         <span
                           className={`text-[10px] sm:text-xs font-medium mt-1.5 hidden sm:block ${
-                            isActive ? "text-[#cc785c] font-semibold" : "text-muted-editorial"
+                            isActive ? "text-[#FF6200] font-semibold" : "text-muted-editorial"
                           }`}
                         >
                           {s.label}
@@ -515,7 +518,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                 {/* Progress bar line */}
                 <div className="w-full bg-surface-soft h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-[#FF6200] to-[#cc785c] h-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#FF6200] to-[#FF6200] h-full transition-all duration-300"
                     style={{ width: `${((step - 1) / 3) * 100}%` }}
                   />
                 </div>
@@ -547,7 +550,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           <img
                             src={photoPreview}
                             alt="Preview"
-                            className="w-24 h-24 rounded-full object-cover border-2 border-[#cc785c] shadow-sm"
+                            className="w-24 h-24 rounded-full object-cover border-2 border-[#FF6200] shadow-sm"
                           />
                         ) : (
                           <div className="w-24 h-24 rounded-full bg-surface-card border-2 border-dashed border-hairline flex flex-col items-center justify-center text-muted-editorial">
@@ -584,7 +587,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.fullName}
                           onChange={handleInputChange}
                           placeholder="e.g. S. Ramanathan"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
 
@@ -598,7 +601,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.fatherName}
                           onChange={handleInputChange}
                           placeholder="e.g. K. Sundaram"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
 
@@ -611,7 +614,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="dob"
                           value={formData.dob}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
 
@@ -623,7 +626,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         >
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
@@ -644,7 +647,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                             value={formData.mobile}
                             onChange={handleInputChange}
                             placeholder="10-digit Mobile"
-                            className="w-full text-sm pl-9 pr-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors font-mono"
+                            className="w-full text-sm pl-9 pr-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors font-mono"
                           />
                         </div>
                       </div>
@@ -660,7 +663,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.whatsapp}
                           onChange={handleInputChange}
                           placeholder="Optional if same as mobile"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors font-mono"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors font-mono"
                         />
                       </div>
 
@@ -676,7 +679,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                             value={formData.email}
                             onChange={handleInputChange}
                             placeholder="e.g. name@example.com (Optional)"
-                            className="w-full text-sm pl-9 pr-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                            className="w-full text-sm pl-9 pr-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                           />
                         </div>
                       </div>
@@ -689,7 +692,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="bloodGroup"
                           value={formData.bloodGroup}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         >
                           <option value="">Select Blood Group (Optional)</option>
                           <option value="A+">A+ (A Positive)</option>
@@ -726,7 +729,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="state"
                           value={formData.state}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         >
                           {INDIAN_STATES.map((st) => (
                             <option key={st} value={st}>
@@ -746,7 +749,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.district}
                           onChange={handleInputChange}
                           placeholder="e.g. Bengaluru Urban, Chennai, Ranchi"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
 
@@ -758,7 +761,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.taluk}
                           onChange={handleInputChange}
                           placeholder="e.g. Shivajinagar, Mylapore"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
 
@@ -773,7 +776,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.pincode}
                           onChange={handleInputChange}
                           placeholder="6-digit PIN"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors font-mono"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors font-mono"
                         />
                       </div>
 
@@ -787,7 +790,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.address}
                           onChange={handleInputChange}
                           placeholder="Door No, Street Name, Landmark, Area..."
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
                     </div>
@@ -813,7 +816,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="qualification"
                           value={formData.qualification}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         >
                           <option value="Matriculation (10th)">Matriculation (10th)</option>
                           <option value="Higher Secondary (12th)">Higher Secondary (12th)</option>
@@ -836,7 +839,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.profession}
                           onChange={handleInputChange}
                           placeholder="e.g. High Court Advocate, Teacher, Student, Doctor"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         />
                       </div>
                     </div>
@@ -856,7 +859,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                               onClick={() => setFormData((prev) => ({ ...prev, wing: w.id }))}
                               className={`p-4 rounded-xl border cursor-pointer transition-all ${
                                 isSelected
-                                  ? "border-[#cc785c] bg-[#cc785c]/5 ring-2 ring-[#cc785c]/30 shadow-sm"
+                                  ? "border-[#FF6200] bg-[#FF6200]/5 ring-2 ring-[#FF6200]/30 shadow-sm"
                                   : "border-hairline bg-surface-soft/60 hover:bg-surface-soft"
                               }`}
                             >
@@ -864,7 +867,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                                 <div
                                   className={`p-2 rounded-lg ${
                                     isSelected
-                                      ? "bg-[#cc785c] text-white"
+                                      ? "bg-[#FF6200] text-white"
                                       : "bg-surface-card text-muted-editorial border border-hairline"
                                   }`}
                                 >
@@ -887,7 +890,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                         name="hoursAvailable"
                         value={formData.hoursAvailable}
                         onChange={handleInputChange}
-                        className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                        className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                       >
                         <option value="2-5 hours/month">2–5 hours / month</option>
                         <option value="5-10 hours/month">5–10 hours / month</option>
@@ -919,7 +922,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           name="idProofType"
                           value={formData.idProofType}
                           onChange={handleInputChange}
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors"
                         >
                           <option value="Aadhaar Card">Aadhaar Card</option>
                           <option value="Voter ID Card">Voter ID Card</option>
@@ -940,23 +943,23 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           value={formData.idProofNumber}
                           onChange={handleInputChange}
                           placeholder="e.g. Last 4 digits of Aadhaar or Bar Council No"
-                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#cc785c] transition-colors font-mono"
+                          className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] transition-colors font-mono"
                         />
                       </div>
                     </div>
 
                     {/* Official 1947 Seva Pledge Box */}
                     <div className="bg-gradient-to-r from-[#faf7ee] to-[#f4ece0] border-2 border-[#e6dbc8] rounded-xl p-5 sm:p-6 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2 text-[#cc785c]">
+                      <div className="flex items-center gap-2 mb-2 text-[#FF6200]">
                         <ShieldCheck size={18} />
                         <span className="font-serif font-bold text-sm uppercase tracking-wider text-ink">
                           The 1947 Maha Seva Dal Pledge
                         </span>
                       </div>
-                      <blockquote className="font-serif text-xs sm:text-sm text-ink/80 italic leading-relaxed border-l-2 border-[#cc785c] pl-4 my-3">
+                      <blockquote className="font-serif text-xs sm:text-sm text-ink/80 italic leading-relaxed border-l-2 border-[#FF6200] pl-4 my-3">
                         “I solemnly pledge to dedicate my service toward the foundational motto of Maha Seva Dal: Unity of People, selfless social welfare, youth empowerment, and communal harmony without bias of caste, creed, or regional differences.”
                       </blockquote>
-                      <div className="mt-4 pt-3 border-t border-[#e2d6c1]">
+                      <div className="mt-4 pt-3 border-t border-[#e2d6c1] space-y-3">
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input
                             type="checkbox"
@@ -964,10 +967,40 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                             onChange={(e) =>
                               setFormData((prev) => ({ ...prev, pledgeAccepted: e.target.checked }))
                             }
-                            className="mt-1 w-4 h-4 rounded text-[#cc785c] border-hairline focus:ring-[#cc785c]"
+                            className="mt-1 w-4 h-4 rounded text-[#FF6200] border-hairline focus:ring-[#FF6200]"
                           />
                           <span className="text-xs text-ink font-medium">
                             I accept the Maha Seva Dal Oath of Service and certify that all details provided are true and accurate.
+                          </span>
+                        </label>
+
+                        <label className="flex items-start gap-3 cursor-pointer pt-2.5 border-t border-[#e2d6c1]/70">
+                          <input
+                            type="checkbox"
+                            checked={formData.termsAccepted}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, termsAccepted: e.target.checked }))
+                            }
+                            className="mt-1 w-4 h-4 rounded text-[#FF6200] border-hairline focus:ring-[#FF6200]"
+                          />
+                          <span className="text-xs text-ink leading-relaxed">
+                            I have read and agree to the{" "}
+                            <Link
+                              to="/terms"
+                              target="_blank"
+                              className="text-[#FF6200] font-semibold underline hover:text-[#D65000]"
+                            >
+                              Terms & Conditions
+                            </Link>{" "}
+                            and{" "}
+                            <Link
+                              to="/privacy"
+                              target="_blank"
+                              className="text-[#FF6200] font-semibold underline hover:text-[#D65000]"
+                            >
+                              Privacy Policy
+                            </Link>
+                            , and consent to voluntary identity verification under the DPDP Act, 2023.
                           </span>
                         </label>
                       </div>
@@ -1027,7 +1060,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
             <div className="card-feature-cream bg-white border border-hairline shadow-lg rounded-2xl p-6 sm:p-10 animate-fade-in">
               {/* Portal Header */}
               <div className="text-center max-w-xl mx-auto mb-8">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#cc785c]/10 text-[#cc785c] mb-3">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF6200]/10 text-[#FF6200] mb-3">
                   <ShieldCheck size={14} />
                   <span>National Cadre Verification</span>
                 </div>
@@ -1057,7 +1090,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                         setStatusError("");
                       }}
                       placeholder="e.g. MSD-IND-2026-0001 or 9840123456"
-                      className="w-full px-4 py-3 text-sm bg-surface-soft/60 border border-hairline rounded-xl focus:outline-none focus:ring-2 focus:ring-[#cc785c]/30 font-medium text-ink placeholder:text-muted-editorial/60"
+                      className="w-full px-4 py-3 text-sm bg-surface-soft/60 border border-hairline rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6200]/30 font-medium text-ink placeholder:text-muted-editorial/60"
                     />
                   </div>
                   <button
@@ -1079,30 +1112,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                   </button>
                 </div>
 
-                {/* Quick Helper Chips */}
-                <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-muted-editorial">
-                  <span>Quick search:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusQuery("MSD-IND-2026-0001");
-                      fetchStatus("MSD-IND-2026-0001");
-                    }}
-                    className="text-[#cc785c] hover:underline font-mono font-medium bg-[#cc785c]/10 px-2 py-0.5 rounded"
-                  >
-                    MSD-IND-2026-0001 (Approved)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusQuery("MSD-IND-2026-0002");
-                      fetchStatus("MSD-IND-2026-0002");
-                    }}
-                    className="text-amber-700 hover:underline font-mono font-medium bg-amber-100 px-2 py-0.5 rounded"
-                  >
-                    MSD-IND-2026-0002 (Pending)
-                  </button>
-                </div>
+
               </form>
 
               {/* Error Alert */}

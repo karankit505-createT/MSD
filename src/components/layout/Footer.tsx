@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Utensils, Flame, ShieldCheck } from "lucide-react";
+import { Mail, Phone, MapPin, Utensils, Flame } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -113,16 +113,6 @@ const Footer = () => {
                   +91 9994625690
                 </a>
               </li>
-              <li className="pt-1 border-t border-hairline/60">
-                <Link
-                  to="/admin"
-                  onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
-                  className="inline-flex items-center gap-1.5 text-muted-editorial/60 hover:text-coral transition-colors text-xs"
-                >
-                  <ShieldCheck size={13} className="text-coral" />
-                  <span>Admin Management Portal</span>
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -133,18 +123,25 @@ const Footer = () => {
           <div>
             © {new Date().getFullYear()} Maha Seva Dal (MSD). All rights reserved.
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-3 gap-y-1 text-[11px]">
             <span>Established 1947 by Saragabani Gopu</span>
             <span>·</span>
             <span>Non-Profit Cultural & Social Organization</span>
             <span>·</span>
             <Link
-              to="/admin"
+              to="/privacy"
               onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
-              className="text-[11px] text-muted-editorial/40 hover:text-ink hover:underline transition-colors cursor-pointer px-2 py-0.5 rounded hover:bg-surface-card"
-              title="Admin Portal"
+              className="hover:text-coral transition-colors underline-offset-2 hover:underline"
             >
-              Admin Portal
+              Privacy Policy
+            </Link>
+            <span>·</span>
+            <Link
+              to="/terms"
+              onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
+              className="hover:text-coral transition-colors underline-offset-2 hover:underline"
+            >
+              Terms & Conditions
             </Link>
           </div>
         </div>

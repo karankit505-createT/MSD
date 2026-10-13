@@ -10,6 +10,8 @@ const {
   verifyAdminToken,
   checkMemberStatus,
   proxyPhoto,
+  getCardSettings,
+  updateCardSettings,
 } = require("../controllers/memberController");
 const { verifyToken } = require("../middleware/auth");
 
@@ -33,6 +35,7 @@ const upload = multer({
 router.post("/register", upload.single("photo"), registerMember);
 router.get("/status", checkMemberStatus);
 router.get("/proxy-photo", proxyPhoto);
+router.get("/card-settings", getCardSettings);
 
 // ─── Admin Auth ───
 router.post("/admin/login", adminLogin);
@@ -44,5 +47,6 @@ router.get("/admin/export-json", verifyToken, exportMembersJson);
 router.patch("/admin/:id/status", verifyToken, updateMemberStatus);
 router.put("/admin/:id/status", verifyToken, updateMemberStatus);
 router.delete("/admin/:id", verifyToken, deleteMember);
+router.post("/admin/card-settings", verifyToken, updateCardSettings);
 
 module.exports = router;

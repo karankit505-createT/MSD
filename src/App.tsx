@@ -16,6 +16,8 @@ import Appointment from "./pages/Appointment";
 import Support from "./pages/Support";
 import Register from "./pages/Register";
 import Admin from "./pages/Admin";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +48,9 @@ const App = () => (
           <Route path="/status" element={<Register defaultTab="status" />} />
           <Route path="/verify" element={<Register defaultTab="status" />} />
           <Route path="/admin" element={<Admin />} />
+          {/* Legal: Privacy Policy & Terms of Service */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsConditions />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

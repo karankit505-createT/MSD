@@ -422,6 +422,64 @@ const proxyPhoto = (req, res) => {
   }
 };
 
+// ─── 9. Card Seal & Signature Settings ─────────────────────────────────────
+const CARD_SETTINGS_FILE = path.join(__dirname, "../data/card_settings.json");
+
+const getCardSettings = async (req, res) => {
+  try {
+    if (fs.existsSync(CARD_SETTINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CARD_SETTINGS_FILE, "utf8"));
+      return res.json({ success: true, settings: data });
+    }
+    const defaultSettings = {
+      customSealUrl: "",
+      customSignatureUrl: "",
+      signatoryName: "Authorized Signatory",
+      signatoryTitle: "Central Executive Committee",
+    };
+    fs.writeFileSync(CARD_SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2), "utf8");
+    return res.json({ success: true, settings: defaultSettings });
+  } catch (err) {
+    console.error("Get Card Settings Error:", err);
+    res.status(500).json({ error: "Failed to load card settings." });
+  }
+};
+
+const updateCardSettings = async (req, res) => {
+  try {
+    const { customSealUrl, customSignatureUrl, signatoryName, signatoryTitle } = req.body;
+    let currentSettings = {
+      customSealUrl: "",
+      customSignatureUrl: "",
+      signatoryName: "Authorized Signatory",
+      signatoryTitle: "Central Executive Committee",
+    };
+    if (fs.existsSync(CARD_SETTINGS_FILE)) {
+      try {
+        currentSettings = JSON.parse(fs.readFileSync(CARD_SETTINGS_FILE, "utf8"));
+      } catch (e) {}
+    }
+
+    const updated = {
+      customSealUrl: customSealUrl !== undefined ? customSealUrl : currentSettings.customSealUrl,
+      customSignatureUrl: customSignatureUrl !== undefined ? customSignatureUrl : currentSettings.customSignatureUrl,
+      signatoryName: signatoryName !== undefined ? signatoryName : currentSettings.signatoryName,
+      signatoryTitle: signatoryTitle !== undefined ? signatoryTitle : currentSettings.signatoryTitle,
+      updatedAt: new Date().toISOString(),
+    };
+
+    fs.writeFileSync(CARD_SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf8");
+    return res.json({
+      success: true,
+      settings: updated,
+      message: "Card seal and signature settings updated successfully.",
+    });
+  } catch (err) {
+    console.error("Update Card Settings Error:", err);
+    res.status(500).json({ error: "Failed to save card settings." });
+  }
+};
+
 module.exports = {
   registerMember,
   getAllMembers,
@@ -432,6 +490,8 @@ module.exports = {
   verifyAdminToken,
   checkMemberStatus,
   proxyPhoto,
+  getCardSettings,
+  updateCardSettings,
 };
 
 
