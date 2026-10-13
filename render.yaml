@@ -13,18 +13,18 @@ services:
       - key: PORT
         value: 10000
       - key: MONGODB_URI
-        value: mongodb+srv://karankit505_db1_user:5dLZYlJvwn46DaAQ@cluster0.wzwpuel.mongodb.net/MDS?retryWrites=true&w=majority&appName=Cluster0
+        sync: false
       - key: JWT_SECRET
-        value: msd_secret_key_1947_unity_of_peoples
+        sync: false
       - key: ADMIN_USERNAME
-        value: admin
+        sync: false
       - key: ADMIN_PASSWORD
-        value: adminmsd1947
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
-        value: wq9znxvs
+        sync: false
       - key: CLOUDINARY_API_KEY
-        value: "547291665178531"
+        sync: false
       - key: CLOUDINARY_API_SECRET
-        value: 2Xo2u5AldEIjjMMBP5XpU6PS9j8
+        sync: false
       - key: FRONTEND_URL
         value: https://msd-nine.vercel.app

@@ -5,9 +5,9 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-const JWT_SECRET = process.env.JWT_SECRET || "msd_secret_key_1947_unity_of_peoples";
-const ADMIN_USER = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASSWORD || "adminmsd1947";
+const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_USER = process.env.ADMIN_USERNAME;
+const ADMIN_PASS = process.env.ADMIN_PASSWORD;
 
 // Local MongoDB sync backup file path
 const DATA_FILE_PATH = path.join(__dirname, "../data/members_mongodb_data.json");
@@ -320,16 +320,25 @@ const exportMembersJson = async (req, res) => {
 const adminLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
+    const adminUser = process.env.ADMIN_USERNAME || ADMIN_USER;
+    const adminPass = process.env.ADMIN_PASSWORD || ADMIN_PASS;
+    const jwtSecret = process.env.JWT_SECRET || JWT_SECRET;
+
+    if (!adminUser || !adminPass || !jwtSecret) {
+      console.error("Admin credentials or JWT_SECRET are not configured in environment variables.");
+      return res.status(500).json({ error: "Server authentication is not properly configured." });
+    }
+
+    if (username === adminUser && password === adminPass) {
       const token = jwt.sign(
-        { username: ADMIN_USER, role: "admin" },
-        JWT_SECRET,
+        { username: adminUser, role: "admin" },
+        jwtSecret,
         { expiresIn: "7d" }
       );
       return res.json({
         success: true,
         token,
-        admin: { username: ADMIN_USER },
+        admin: { username: adminUser },
       });
     }
 

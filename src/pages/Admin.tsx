@@ -107,8 +107,8 @@ const Admin = () => {
   );
 
   // Login form state
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("adminmsd1947");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
 
@@ -634,12 +634,6 @@ const Admin = () => {
                 >
                   {loginLoading ? "Authenticating..." : "Sign In to Admin Portal"}
                 </button>
-
-                <div className="mt-4 p-3 rounded-lg bg-surface-soft/80 border border-hairline text-center text-[11px] text-muted-editorial">
-                  <span>Default Credentials: </span>
-                  <span className="font-mono text-ink font-semibold">admin</span> /{" "}
-                  <span className="font-mono text-ink font-semibold">adminmsd1947</span>
-                </div>
               </form>
             </div>
           </div>

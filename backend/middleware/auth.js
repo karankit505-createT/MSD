@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-const JWT_SECRET = process.env.JWT_SECRET || "msd_secret_key_1947_unity_of_peoples";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -10,8 +10,13 @@ const verifyToken = (req, res, next) => {
   }
 
   const token = authHeader.split(" ")[1];
+  const jwtSecret = process.env.JWT_SECRET || JWT_SECRET;
+  if (!jwtSecret) {
+    return res.status(500).json({ error: "JWT_SECRET is not configured on server." });
+  }
+
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     req.admin = decoded;
     next();
   } catch (error) {
