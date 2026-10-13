@@ -11,6 +11,8 @@ import {
   Filter,
   Download,
   Eye,
+  EyeOff,
+  Loader2,
   Trash2,
   ShieldCheck,
   X,
@@ -111,6 +113,7 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Dashboard Data State
   const [members, setMembers] = useState<Member[]>([]);
@@ -374,6 +377,41 @@ const Admin = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Lock body & html scroll and handle Escape key when modals are open
+  useEffect(() => {
+    if (selectedMember || cardSettingsModalOpen || memberToDelete) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          if (memberToDelete) {
+            setMemberToDelete(null);
+          } else if (cardSettingsModalOpen) {
+            setCardSettingsModalOpen(false);
+          } else if (selectedMember) {
+            setSelectedMember(null);
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [selectedMember, cardSettingsModalOpen, memberToDelete]);
+
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,15 +425,26 @@ const Admin = () => {
         body: JSON.stringify({ username, password }),
       });
 
-      const json = await res.json();
+      if (res.status === 401 || res.status === 403) {
+        setLoginError("Invalid username or password");
+        return;
+      }
+
       if (!res.ok) {
-        throw new Error(json.error || "Invalid username or password");
+        setLoginError("Something went wrong. Please try again.");
+        return;
+      }
+
+      const json = await res.json();
+      if (!json?.token) {
+        setLoginError("Something went wrong. Please try again.");
+        return;
       }
 
       localStorage.setItem("msd_admin_token", json.token);
       setToken(json.token);
-    } catch (err: any) {
-      setLoginError(err.message || "Login failed");
+    } catch {
+      setLoginError("Something went wrong. Please try again.");
     } finally {
       setLoginLoading(false);
     }
@@ -597,42 +646,83 @@ const Admin = () => {
                 </p>
               </div>
 
-              {loginError && (
-                <div className="flex items-center gap-2 p-3 mb-5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
-                  <AlertCircle size={15} />
-                  <span>{loginError}</span>
-                </div>
-              )}
-
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-ink mb-1">Admin Username</label>
+                  <label htmlFor="admin-username" className="block text-xs font-medium text-ink mb-1.5">
+                    Admin Username
+                  </label>
                   <input
+                    id="admin-username"
+                    name="username"
                     type="text"
+                    autoComplete="username"
+                    placeholder="Enter admin username"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={loginLoading}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (loginError) setLoginError("");
+                    }}
                     required
-                    className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200]"
+                    className="admin-login-input w-full text-sm px-3.5 py-2.5 rounded-lg bg-surface-soft text-ink placeholder:text-muted-editorial/60 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-ink mb-1">Security Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200]"
-                  />
+                  <label htmlFor="admin-password" className="block text-xs font-medium text-ink mb-1.5">
+                    Security Password
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      id="admin-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      value={password}
+                      disabled={loginLoading}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (loginError) setLoginError("");
+                      }}
+                      required
+                      className="admin-login-input w-full text-sm pl-3.5 pr-11 py-2.5 rounded-lg bg-surface-soft text-ink placeholder:text-muted-editorial/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <button
+                      type="button"
+                      disabled={loginLoading}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-2.5 p-1 text-muted-editorial hover:text-ink focus:text-[#ff6200] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
+
+                {loginError && (
+                  <div
+                    role="alert"
+                    className="flex items-center gap-2.5 p-3 text-xs font-medium text-[#d92d20] bg-[#fef3f2] border border-[#fecdca] rounded-xl shadow-xs transition-all duration-200"
+                  >
+                    <AlertCircle size={15} className="shrink-0 text-[#d92d20]" />
+                    <span>{loginError}</span>
+                  </div>
+                )}
 
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="w-full btn-primary-coral text-xs py-3 font-semibold justify-center shadow-md hover:shadow-lg disabled:opacity-50 mt-2"
+                  className="w-full btn-primary-coral text-xs py-3 font-semibold flex justify-center items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-2 transition-all duration-200"
                 >
-                  {loginLoading ? "Authenticating..." : "Sign In to Admin Portal"}
+                  {loginLoading ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <span>Sign In to Admin Portal</span>
+                  )}
                 </button>
               </form>
             </div>
@@ -1028,10 +1118,19 @@ const Admin = () => {
 
       {/* ─── MEMBER REVIEW DOSSIER & DIGITAL ID MODAL ───────────────────────── */}
       {selectedMember && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm animate-fade-in overflow-hidden">
-          <div className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-5xl w-full flex flex-col max-h-[92vh] overflow-hidden my-auto">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-2 sm:p-4 md:p-6 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          onWheel={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedMember(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-5xl w-full flex flex-col h-[88vh] max-h-[850px] min-h-[480px] overflow-hidden"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-soft/60 flex-shrink-0">
+            <div className="px-6 py-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-soft/60 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#FF6200]/10 text-[#FF6200] flex items-center justify-center border border-[#FF6200]/20 flex-shrink-0">
                   <ShieldCheck size={22} />
@@ -1087,7 +1186,10 @@ const Admin = () => {
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
+            <div
+              tabIndex={0}
+              className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar overscroll-contain space-y-6 focus:outline-none"
+            >
               {dossierTab === "dossier" ? (
                 <>
                   {/* Top Cadre Profile Banner */}
@@ -1546,30 +1648,44 @@ const Admin = () => {
 
       {/* ─── CARD SEAL & SIGNATURE CONFIGURATION MODAL ───────────────────────── */}
       {cardSettingsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-xl w-full p-6 sm:p-7 my-8 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
-            {/* Modal Close */}
-            <button
-              onClick={() => setCardSettingsModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full text-muted-editorial hover:text-ink hover:bg-surface-soft border border-hairline transition-colors"
-            >
-              <X size={18} />
-            </button>
-
+        <div
+          className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          onWheel={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCardSettingsModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-xl w-full flex flex-col max-h-[88vh] overflow-hidden relative"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="border-b border-hairline pb-4 mb-5">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-lg bg-[#FF6200]/10 text-[#FF6200] flex items-center justify-center">
-                  <Award size={18} />
+            <div className="px-6 py-4 border-b border-hairline flex items-center justify-between bg-surface-soft/60 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FF6200]/10 text-[#FF6200] flex items-center justify-center border border-[#FF6200]/20 flex-shrink-0">
+                  <Award size={19} />
                 </div>
-                <h3 className="font-serif text-lg font-bold text-ink">ID Card Seal & Signature Settings</h3>
+                <div>
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-ink">ID Card Seal & Signature Settings</h3>
+                  <p className="text-[11px] sm:text-xs text-muted-editorial">
+                    Configure authorized seal and digital signature applied to ID cards
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-editorial">
-                Configure the authorized seal and digital signature applied when ID cards are approved and downloaded.
-              </p>
+              <button
+                onClick={() => setCardSettingsModalOpen(false)}
+                className="p-1.5 rounded-full text-muted-editorial hover:text-ink hover:bg-surface-soft border border-hairline transition-colors cursor-pointer flex-shrink-0"
+                title="Close (Esc)"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="space-y-5">
+            {/* Modal Scrollable Body */}
+            <div
+              tabIndex={0}
+              className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 max-h-[calc(88vh-130px)] custom-scrollbar overscroll-contain space-y-5 focus:outline-none"
+            >
               {/* Live Preview Card Box */}
               <div className="p-4 rounded-xl bg-surface-soft border border-hairline">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-editorial block mb-2">
@@ -1648,7 +1764,7 @@ const Admin = () => {
                     <button
                       type="button"
                       onClick={() => setCardSettings((p) => ({ ...p, customSealUrl: "" }))}
-                      className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                      className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded transition-colors flex items-center gap-1 flex-shrink-0 cursor-pointer"
                     >
                       <Trash2 size={11} />
                       <span>Use Default Stamp</span>
@@ -1689,7 +1805,7 @@ const Admin = () => {
                     <button
                       type="button"
                       onClick={() => setCardSettings((p) => ({ ...p, customSignatureUrl: "" }))}
-                      className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                      className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded transition-colors flex items-center gap-1 flex-shrink-0 cursor-pointer"
                     >
                       <Trash2 size={11} />
                       <span>Use Default Signature</span>
@@ -1740,48 +1856,48 @@ const Admin = () => {
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-hairline">
+            {/* Modal Sticky Bottom Action Footer */}
+            <div className="px-6 py-3.5 border-t border-hairline bg-surface-soft/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  setCardSettings({
+                    customSealUrl: "",
+                    customSignatureUrl: "",
+                    signatoryName: "Authorized Signatory",
+                    signatoryTitle: "Central Executive Committee",
+                  })
+                }
+                className="text-xs text-muted-editorial hover:text-ink hover:underline cursor-pointer"
+              >
+                Reset all to defaults
+              </button>
+
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setCardSettings({
-                      customSealUrl: "",
-                      customSignatureUrl: "",
-                      signatoryName: "Authorized Signatory",
-                      signatoryTitle: "Central Executive Committee",
-                    })
-                  }
-                  className="text-xs text-muted-editorial hover:text-ink hover:underline"
+                  onClick={() => setCardSettingsModalOpen(false)}
+                  className="btn-secondary text-xs px-3.5 py-1.5 cursor-pointer"
                 >
-                  Reset all to defaults
+                  Cancel
                 </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCardSettingsModalOpen(false)}
-                    className="btn-secondary text-xs px-3.5 py-2"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveCardSettings}
-                    disabled={savingCardSettings}
-                    className="btn-primary-coral text-xs px-4 py-2 flex items-center gap-1.5 shadow-xs"
-                  >
-                    {savingCardSettings ? (
-                      <span>Saving...</span>
-                    ) : (
-                      <>
-                        <Check size={13} />
-                        <span>Save & Apply Settings</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveCardSettings}
+                  disabled={savingCardSettings}
+                  className="btn-primary-coral text-xs px-4 py-1.5 flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  {savingCardSettings ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      <span>Save & Apply Settings</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -1790,8 +1906,14 @@ const Admin = () => {
 
       {/* ─── DELETE CONFIRMATION MODAL ─────────────────────────────────────── */}
       {memberToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl border border-rose-200 shadow-2xl max-w-md w-full p-6 relative">
+        <div
+          className="fixed inset-0 z-[70] bg-black/65 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white rounded-2xl border border-rose-200 shadow-2xl max-w-md w-full p-6 relative"
+            onWheel={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setMemberToDelete(null)}
               disabled={deleteLoading}

@@ -314,6 +314,58 @@ const drawVectorSignature = (ctx: CanvasRenderingContext2D, startX: number, star
 };
 
 /**
+ * Safely resolve brand logo image and generate high-res circular DataURL
+ */
+const resolveBrandLogo = async (): Promise<{
+  img: HTMLImageElement | null;
+  circularDataUrl: string;
+}> => {
+  const brandLogoUrl =
+    "https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png";
+  let proxyLogoUrl = brandLogoUrl;
+  if (proxyLogoUrl.startsWith("http") && !proxyLogoUrl.includes("/api/members/proxy-photo")) {
+    proxyLogoUrl = getApiUrl(
+      `/api/members/proxy-photo?url=${encodeURIComponent(brandLogoUrl)}`
+    );
+  }
+  let img = await safeLoadImage(proxyLogoUrl, 2500);
+  if (!img) {
+    img = await safeLoadImage(brandLogoUrl, 2000);
+  }
+
+  let circularDataUrl = "";
+  if (img && img.width > 0) {
+    try {
+      const c = document.createElement("canvas");
+      const s = 240;
+      c.width = s;
+      c.height = s;
+      const ctx = c.getContext("2d");
+      if (ctx) {
+        ctx.beginPath();
+        ctx.arc(s / 2, s / 2, s / 2 - 4, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, 0, 0, s, s);
+
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(s / 2, s / 2, s / 2 - 4, 0, Math.PI * 2);
+        ctx.strokeStyle = "#FF6200";
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        circularDataUrl = c.toDataURL("image/png");
+      }
+    } catch (e) {
+      console.warn("Could not create circular logo DataURL:", e);
+    }
+  }
+
+  return { img, circularDataUrl };
+};
+
+/**
  * Direct HTML5 Canvas generator for 100% reliable, zero-CORS-failure ID card downloads (800x1200px)
  */
 export const generateIdCardCanvas = async (
@@ -371,6 +423,9 @@ export const generateIdCardCanvas = async (
       }
     }
 
+    // 5. Resolve Official Organization Logo
+    const { img: logoImg } = await resolveBrandLogo();
+
     // Function to render card on canvas
     const drawCard = (includePhoto: boolean): string => {
       const canvas = document.createElement("canvas");
@@ -412,30 +467,118 @@ export const generateIdCardCanvas = async (
 
       // 4. Header Bar
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 84, 800, 145);
+      ctx.fillRect(0, 84, 800, 131);
 
-      // Title & Motto
-      ctx.fillStyle = "#1b1b1b";
-      ctx.font = "bold 38px Georgia, serif";
+      // Subtle warm gradient behind header
+      const headerGrad = ctx.createLinearGradient(0, 84, 0, 215);
+      headerGrad.addColorStop(0, "#ffffff");
+      headerGrad.addColorStop(1, "#faf6ef");
+      ctx.fillStyle = headerGrad;
+      ctx.fillRect(0, 84, 800, 131);
+
+      // Header bottom border
+      ctx.fillStyle = "#e8ddcb";
+      ctx.fillRect(0, 214, 800, 1);
+
+      // ─── 4A. Left Brand Logo ───
+      const logoCenterX = 90;
+      const logoCenterY = 149;
+      const logoRadius = 45;
+
+      if (logoImg && logoImg.width > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(logoCenterX, logoCenterY, logoRadius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(
+          logoImg,
+          logoCenterX - logoRadius,
+          logoCenterY - logoRadius,
+          logoRadius * 2,
+          logoRadius * 2
+        );
+        ctx.restore();
+
+        // High-definition saffron border ring
+        ctx.beginPath();
+        ctx.arc(logoCenterX, logoCenterY, logoRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "#FF6200";
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+      } else {
+        // High-fidelity vector fallback logo
+        ctx.beginPath();
+        ctx.arc(logoCenterX, logoCenterY, logoRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#faf3ee";
+        ctx.fill();
+        ctx.strokeStyle = "#FF6200";
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        ctx.fillStyle = "#FF6200";
+        ctx.font = "bold 20px Georgia, serif";
+        ctx.textAlign = "center";
+        ctx.fillText("MSD", logoCenterX, logoCenterY + 7);
+      }
+
+      // ─── 4B. Center Titles & Motto ───
       ctx.textAlign = "center";
-      ctx.fillText("MAHA SEVA DAL", 400, 140);
+      ctx.fillStyle = "#141413";
+      ctx.font = "bold 34px Georgia, serif";
+      ctx.fillText("MAHA SEVA DAL", 400, 135);
 
       ctx.fillStyle = "#FF6200";
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText("ESTD. 1947 · UNITY OF PEOPLE'S", 400, 170);
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText("ESTD. 1947 · UNITY OF PEOPLE'S", 400, 165);
 
       ctx.fillStyle = "#736b5e";
-      ctx.font = "14px sans-serif";
-      ctx.fillText("National Socio-Cultural Cadre Registry", 400, 195);
+      ctx.font = "13px sans-serif";
+      ctx.fillText("National Socio-Cultural Cadre Registry", 400, 191);
 
-      // Title Banner
+      // ─── 4C. Right Official 1947 Emblem Badge ───
+      const emblemCenterX = 710;
+      const emblemCenterY = 149;
+      const emblemRadius = 42;
+
+      // Outer circle
+      ctx.beginPath();
+      ctx.arc(emblemCenterX, emblemCenterY, emblemRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#faf5ea";
+      ctx.fill();
+      ctx.strokeStyle = "#e8d2be";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inner saffron ring
+      ctx.beginPath();
+      ctx.arc(emblemCenterX, emblemCenterY, emblemRadius - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = "#FF6200";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Badge texts
       ctx.fillStyle = "#FF6200";
-      ctx.fillRect(80, 215, 640, 36);
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("ESTD", emblemCenterX, emblemCenterY - 14);
+
+      ctx.fillStyle = "#141413";
+      ctx.font = "bold 17px Georgia, serif";
+      ctx.fillText("1947", emblemCenterX, emblemCenterY + 4);
+
+      ctx.fillStyle = "#138808";
+      ctx.font = "bold 8.5px sans-serif";
+      ctx.fillText("CADRE", emblemCenterX, emblemCenterY + 17);
+
+      // ─── 4D. Title Banner ───
+      ctx.fillStyle = "#FF6200";
+      ctx.fillRect(60, 222, 680, 36);
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 16px sans-serif";
+      ctx.font = "bold 15px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("OFFICIAL NATIONAL CADRE IDENTITY CARD", 400, 239);
+      ctx.fillText("OFFICIAL NATIONAL CADRE IDENTITY CARD", 400, 246);
 
       // Photo Frame
       ctx.fillStyle = "#f5efe6";
@@ -712,6 +855,15 @@ export const generateIdCardPdf = async (
   const pageWidth = 210;
   const pageHeight = 297;
 
+  // Load brand logo circular DataURL for A4 PDF header
+  let circularLogoDataUrl = "";
+  try {
+    const logoData = await resolveBrandLogo();
+    circularLogoDataUrl = logoData.circularDataUrl;
+  } catch (logoErr) {
+    console.warn("Could not load logo for PDF header:", logoErr);
+  }
+
   // ─── 1. Tricolor Top Ribbon ───
   doc.setFillColor(255, 98, 0); // Saffron
   doc.rect(0, 0, pageWidth, 2.5, "F");
@@ -720,28 +872,75 @@ export const generateIdCardPdf = async (
   doc.setFillColor(19, 136, 8); // Green
   doc.rect(0, 4, pageWidth, 2.5, "F");
 
-  // ─── 2. Organization Header ───
-  doc.setTextColor(27, 27, 27);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text("MAHA SEVA DAL", pageWidth / 2, 17, { align: "center" });
+  // ─── 2. Organization Header with Official Logo & Cadre Seal ───
+  // Add circular Logo on the left
+  if (circularLogoDataUrl) {
+    doc.addImage(circularLogoDataUrl, "PNG", 18, 9, 18, 18);
+  } else {
+    // Elegant fallback emblem circle
+    doc.setFillColor(250, 245, 235);
+    doc.circle(27, 18, 9, "F");
+    doc.setDrawColor(255, 98, 0);
+    doc.setLineWidth(0.5);
+    doc.circle(27, 18, 9, "S");
+    doc.setTextColor(255, 98, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("MSD", 27, 20.5, { align: "center" });
+  }
 
-  doc.setTextColor(204, 120, 92); // Coral / Terracotta
+  // Center Organization Titles
+  doc.setTextColor(20, 20, 19);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("ESTD. 1947 · UNITY OF PEOPLE'S", pageWidth / 2, 22, { align: "center" });
+  doc.setFontSize(19);
+  doc.text("MAHA SEVA DAL", pageWidth / 2, 16.5, { align: "center" });
+
+  doc.setTextColor(255, 98, 0); // Official BJP Saffron Orange (#FF6200)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("ESTD. 1947 · UNITY OF PEOPLE'S", pageWidth / 2, 21.5, { align: "center" });
 
   doc.setTextColor(115, 107, 94);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text("National Socio-Cultural Cadre Registry · Official Cadre Identity Certificate", pageWidth / 2, 26.5, {
-    align: "center",
-  });
+  doc.setFontSize(7.5);
+  doc.text(
+    "National Socio-Cultural Cadre Registry · Official Cadre Identity Certificate",
+    pageWidth / 2,
+    26,
+    { align: "center" }
+  );
+
+  // Right Official Cadre Seal Badge (Symmetrical to left logo)
+  const rightBadgeX = 183;
+  const rightBadgeY = 18;
+  doc.setFillColor(250, 245, 235);
+  doc.circle(rightBadgeX, rightBadgeY, 9, "F");
+  doc.setDrawColor(255, 98, 0);
+  doc.setLineWidth(0.4);
+  doc.circle(rightBadgeX, rightBadgeY, 9, "S");
+  doc.setDrawColor(220, 210, 195);
+  doc.setLineWidth(0.2);
+  doc.circle(rightBadgeX, rightBadgeY, 7.8, "S");
+
+  doc.setTextColor(255, 98, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(5.5);
+  doc.text("ESTD", rightBadgeX, rightBadgeY - 3.2, { align: "center" });
+
+  doc.setTextColor(20, 20, 19);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.text("1947", rightBadgeX, rightBadgeY + 0.8, { align: "center" });
+
+  doc.setTextColor(19, 136, 8); // India Green
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(5);
+  doc.text("CADRE", rightBadgeX, rightBadgeY + 4.5, { align: "center" });
 
   // Thin separator line
   doc.setDrawColor(220, 210, 195);
   doc.setLineWidth(0.4);
-  doc.line(20, 30, pageWidth - 20, 30);
+  doc.line(18, 30.5, pageWidth - 18, 30.5);
 
   // ─── 3. Member Information Summary Banner ───
   doc.setFillColor(250, 245, 235);

@@ -33,7 +33,10 @@ import {
   Check,
   RefreshCw,
   FileText,
+  Crop,
+  Trash2,
 } from "lucide-react";
+import ImageCropModal from "@/components/ImageCropModal";
 
 const INDIAN_STATES = [
   "Karnataka",
@@ -154,6 +157,9 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [rawPhotoSrc, setRawPhotoSrc] = useState<string | null>(null);
+  const [rawPhotoName, setRawPhotoName] = useState<string>("cadre_photo.jpg");
 
   useEffect(() => {
     if (urlQuery) {
@@ -216,9 +222,31 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
+      setRawPhotoName(file.name);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setRawPhotoSrc(reader.result);
+          setCropModalOpen(true);
+        }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
     }
+  };
+
+  const handleCropComplete = (croppedBlob: Blob, croppedDataUrl: string) => {
+    const cleanName = rawPhotoName.replace(/\.[^/.]+$/, "") + "_cropped.jpg";
+    const file = new File([croppedBlob], cleanName, { type: "image/jpeg" });
+    setPhotoFile(file);
+    setPhotoPreview(croppedDataUrl);
+    setCropModalOpen(false);
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setRawPhotoSrc(null);
   };
 
   const validateStep = (currentStep: number) => {
@@ -543,35 +571,76 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                       </p>
                     </div>
 
-                    {/* Photo Upload Section */}
+                    {/* Photo Upload Section with Integrated Cropper */}
                     <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-surface-soft/60 border border-hairline">
-                      <div className="relative">
+                      <div className="relative flex-shrink-0">
                         {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt="Preview"
-                            className="w-24 h-24 rounded-full object-cover border-2 border-[#FF6200] shadow-sm"
-                          />
+                          <div className="relative group">
+                            <img
+                              src={photoPreview}
+                              alt="Passport Photo Preview"
+                              className="w-24 h-28 rounded-xl object-cover border-2 border-[#FF6200] shadow-md bg-white"
+                            />
+                            <div
+                              className="absolute -top-1.5 -right-1.5 bg-emerald-600 text-white p-0.5 rounded-full shadow-xs"
+                              title="Passport Photo Cropped & Ready"
+                            >
+                              <CheckCircle2 size={15} />
+                            </div>
+                          </div>
                         ) : (
-                          <div className="w-24 h-24 rounded-full bg-surface-card border-2 border-dashed border-hairline flex flex-col items-center justify-center text-muted-editorial">
-                            <User size={32} />
-                            <span className="text-[9px] mt-1">Passport Photo</span>
+                          <div className="w-24 h-28 rounded-xl bg-surface-card border-2 border-dashed border-hairline flex flex-col items-center justify-center text-muted-editorial">
+                            <User size={32} className="text-muted-editorial/70" />
+                            <span className="text-[9px] mt-1.5 font-medium">Passport Photo</span>
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 text-center sm:text-left">
-                        <label className="inline-flex items-center gap-2 cursor-pointer btn-secondary text-xs px-3.5 py-2">
-                          <Upload size={14} />
-                          <span>{photoPreview ? "Change Photograph" : "Upload Passport Photograph"}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handlePhotoSelect}
-                          />
-                        </label>
-                        <p className="text-[11px] text-muted-editorial mt-1.5">
-                          Recommended: Clean passport-size photo (JPG, PNG, or WEBP under 5MB).
+
+                      <div className="flex-1 text-center sm:text-left space-y-2">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                          <label className="inline-flex items-center gap-2 cursor-pointer btn-secondary text-xs px-3.5 py-2 hover:bg-white shadow-2xs">
+                            <Upload size={14} />
+                            <span>{photoPreview ? "Change Photo" : "Upload Passport Photograph"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handlePhotoSelect}
+                            />
+                          </label>
+
+                          {photoPreview && rawPhotoSrc && (
+                            <button
+                              type="button"
+                              onClick={() => setCropModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-[#e8d2be] bg-[#faf3ee] text-[#FF6200] hover:bg-[#faede3] font-semibold cursor-pointer transition-colors shadow-2xs"
+                              title="Re-open Cropping Tool"
+                            >
+                              <Crop size={14} />
+                              <span>Adjust Crop</span>
+                            </button>
+                          )}
+
+                          {photoPreview && (
+                            <button
+                              type="button"
+                              onClick={handleRemovePhoto}
+                              className="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                              title="Remove Photo"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-muted-editorial">
+                          {photoPreview ? (
+                            <span className="text-emerald-700 font-medium flex items-center gap-1 justify-center sm:justify-start">
+                              <Check size={12} /> Passport photo cropped & optimized for official Cadre ID card.
+                            </span>
+                          ) : (
+                            "Select photo from device — an interactive cropping modal will open to position and frame your face."
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1250,6 +1319,16 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
           )}
         </div>
       </section>
+
+      {/* ─── PASSPORT PHOTO CROP MODAL ─────────────────────────────────────── */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageSrc={rawPhotoSrc}
+        onClose={() => setCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+        aspectRatio={3 / 4}
+        title="Crop Cadre Passport Photograph"
+      />
     </PageLayout>
   );
 };

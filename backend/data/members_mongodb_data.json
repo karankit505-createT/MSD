@@ -24,11 +24,11 @@
     "idProofType": "Aadhaar Card",
     "idProofNumber": "",
     "pledgeAccepted": true,
-    "status": "PENDING",
+    "status": "APPROVED",
     "adminNotes": "",
-    "approvedAt": null,
+    "approvedAt": "2026-10-13T12:46:20.329Z",
     "createdAt": "2026-10-12T13:54:25.691Z",
-    "updatedAt": "2026-10-13T07:26:10.575Z",
+    "updatedAt": "2026-10-13T12:46:20.332Z",
     "__v": 0
   },
   {
