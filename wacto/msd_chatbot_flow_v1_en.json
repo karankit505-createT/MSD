@@ -1,0 +1,1769 @@
+{
+  "chatbot": {
+    "name": "Maha Seva Dal (MSD) v1 (English)"
+  },
+  "nodes": [
+    {
+      "nodeId": "root",
+      "type": "interactive",
+      "name": "Root Node",
+      "interactiveId": null,
+      "keywords": [
+        "Hi",
+        "Hello",
+        "Hey",
+        "Start",
+        "Menu",
+        "hi",
+        "hello",
+        "hey",
+        "start",
+        "menu",
+        "MSD",
+        "msd"
+      ],
+      "parentNodeId": null,
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Maha Seva Dal"
+        },
+        "body": "Welcome to Maha Seva Dal (Unity of People's).\n\nDedicated to selfless community service, healthcare, child welfare, legal empowerment, and youth development.\n\nHow can we serve together today?",
+        "footer": "Select an option below",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "86a7cca2-db03-4950-9b40-8673c376a3b4",
+                "title": "Join Maha Seva Dal"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "ed27b447-ff7a-4df1-a037-df50352c5a1a",
+                "title": "Seva Wings & Causes"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "df807006-f2b7-4d1f-9998-77af9a72918b",
+                "title": "Member Services"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "type": "interactive",
+      "name": "Register: Select Wing",
+      "interactiveId": "86a7cca2-db03-4950-9b40-8673c376a3b4",
+      "keywords": [
+        "Join Maha Seva Dal"
+      ],
+      "parentNodeId": "root",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "MSD Volunteer Wings"
+        },
+        "body": "Please select the Seva Wing you wish to join and dedicate your voluntary service towards:",
+        "footer": "Choose 1 wing to continue",
+        "action": {
+          "button": "Choose Seva Wing",
+          "sections": [
+            {
+              "title": "Available Wings",
+              "rows": [
+                {
+                  "id": "59bb6aae-9389-4a6f-9fe7-47ea49006ae7",
+                  "title": "Legal Wing",
+                  "description": "Free legal aid, citizen rights awareness, community justice"
+                },
+                {
+                  "id": "6be62bbd-7b98-4c48-8c67-5eecd8d71603",
+                  "title": "Medical & Health",
+                  "description": "Free medical camps, blood donation drives, health checkups"
+                },
+                {
+                  "id": "701bbd8a-ec58-409d-b9cf-fa3d2d0f99b5",
+                  "title": "Education & Child Care",
+                  "description": "Child welfare, study materials, student mentorship"
+                },
+                {
+                  "id": "1b95de6f-798a-455b-9c3f-9fa993f967c5",
+                  "title": "Youth & Sports Wing",
+                  "description": "Youth leadership, sports tournaments, fitness awareness"
+                },
+                {
+                  "id": "a4959ac4-7989-43a3-a868-2f2300c5fbd3",
+                  "title": "Community & Mahaprasad",
+                  "description": "Annadanam, community food drives, emergency relief aid"
+                },
+                {
+                  "id": "e1f54beb-8150-4b39-85f3-ffc5133e5b4b",
+                  "title": "General Seva Cadre",
+                  "description": "General volunteering, field assistance, event coordination"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "type": "interactive",
+      "name": "Register: Confirm Details",
+      "interactiveId": null,
+      "keywords": [
+        "District Selected"
+      ],
+      "parentNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Registration Summary"
+        },
+        "body": "Thank you for choosing to serve with Maha Seva Dal!\n\nYour Seva Wing and District have been recorded.\n\nTap 'Confirm Registration' to complete your enrollment and receive your unique Member ID.",
+        "footer": "Maha Seva Dal Foundation",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "f84bb9c5-1b93-4d63-9c87-5a9c1c36ffbe",
+                "title": "Confirm Registration"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "deb9ec9c-209b-467c-b7b3-ac00c8500c7d",
+                "title": "Change Wing"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "969ff292-0c05-4fe0-b959-b19e612a8699",
+                "title": "Main Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "type": "interactive",
+      "name": "Select District — Page 1/5",
+      "interactiveId": null,
+      "keywords": [
+        "Select District — Page 1/5"
+      ],
+      "parentNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Select Your District"
+        },
+        "body": "Please select your district for local volunteer coordination (Page 1/5):",
+        "footer": "Tap an option below",
+        "action": {
+          "button": "Select District",
+          "sections": [
+            {
+              "title": "Districts",
+              "rows": [
+                {
+                  "id": "99b1a43a-27a8-4fdf-9937-35c337b63359",
+                  "title": "Ariyalur District",
+                  "description": "Maha Seva Dal - Ariyalur"
+                },
+                {
+                  "id": "190b1c53-2e3c-465f-995e-ff8d8803bc07",
+                  "title": "Chengalpattu District",
+                  "description": "Maha Seva Dal - Chengalpattu"
+                },
+                {
+                  "id": "5bd48d96-719b-4a56-98b4-225b31c11c76",
+                  "title": "Chennai District",
+                  "description": "Maha Seva Dal - Chennai"
+                },
+                {
+                  "id": "ef1422b3-a8cd-4499-ae7b-822720e25d06",
+                  "title": "Coimbatore District",
+                  "description": "Maha Seva Dal - Coimbatore"
+                },
+                {
+                  "id": "34be0482-1cb5-47c4-a9ba-c6617e1c11b5",
+                  "title": "Cuddalore District",
+                  "description": "Maha Seva Dal - Cuddalore"
+                },
+                {
+                  "id": "ee252543-12f8-4467-ad28-2ca3470e8bd1",
+                  "title": "Dharmapuri District",
+                  "description": "Maha Seva Dal - Dharmapuri"
+                },
+                {
+                  "id": "c6882b0f-5004-489f-a1f9-6680d6f547d4",
+                  "title": "Dindigul District",
+                  "description": "Maha Seva Dal - Dindigul"
+                },
+                {
+                  "id": "b0c7cc87-71d7-4400-b4fa-59c0de7034de",
+                  "title": "Erode District",
+                  "description": "Maha Seva Dal - Erode"
+                },
+                {
+                  "id": "c50cfac9-1f9c-435a-96cf-1ec73bcf9229",
+                  "title": "Kallakurichi District",
+                  "description": "Maha Seva Dal - Kallakurichi"
+                },
+                {
+                  "id": "6596793b-eb11-4679-a58c-fc96014066e2",
+                  "title": "More Districts (2/5)",
+                  "description": "View more districts in Tamil Nadu"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "type": "interactive",
+      "name": "Select District — Page 2/5",
+      "interactiveId": null,
+      "keywords": [
+        "Select District — Page 2/5"
+      ],
+      "parentNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Select Your District"
+        },
+        "body": "Please select your district for local volunteer coordination (Page 2/5):",
+        "footer": "Tap an option below",
+        "action": {
+          "button": "Select District",
+          "sections": [
+            {
+              "title": "Districts",
+              "rows": [
+                {
+                  "id": "089c89d1-b1e2-4926-8525-7c6f32f8457a",
+                  "title": "Kanchipuram District",
+                  "description": "Maha Seva Dal - Kanchipuram"
+                },
+                {
+                  "id": "1ef4e38e-e192-49d0-a9e2-34f5643168c5",
+                  "title": "Kanyakumari District",
+                  "description": "Maha Seva Dal - Kanyakumari"
+                },
+                {
+                  "id": "b97f4307-4b5f-42ca-9524-59a09ea81fc3",
+                  "title": "Karur District",
+                  "description": "Maha Seva Dal - Karur"
+                },
+                {
+                  "id": "56b9ce7f-977e-4e1c-a364-880af63bea45",
+                  "title": "Krishnagiri District",
+                  "description": "Maha Seva Dal - Krishnagiri"
+                },
+                {
+                  "id": "e52245e1-dde1-4f7b-bcb6-3a1534ee7907",
+                  "title": "Madurai District",
+                  "description": "Maha Seva Dal - Madurai"
+                },
+                {
+                  "id": "07fdbd94-12ce-4220-8282-9607bfbc27f8",
+                  "title": "Mayiladuthurai District",
+                  "description": "Maha Seva Dal - Mayiladuthurai"
+                },
+                {
+                  "id": "73973484-77e1-4d88-9183-29b825ac4598",
+                  "title": "Nagapattinam District",
+                  "description": "Maha Seva Dal - Nagapattinam"
+                },
+                {
+                  "id": "63f75321-eaee-4e88-bc40-63fb705c71d2",
+                  "title": "Namakkal District",
+                  "description": "Maha Seva Dal - Namakkal"
+                },
+                {
+                  "id": "9337474f-8c12-4662-ada4-21b9dee65ff8",
+                  "title": "Nilgiris District",
+                  "description": "Maha Seva Dal - Nilgiris"
+                },
+                {
+                  "id": "3ae27175-b0d7-44ab-9310-ea415347720f",
+                  "title": "More Districts (3/5)",
+                  "description": "View more districts in Tamil Nadu"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "type": "interactive",
+      "name": "Select District — Page 3/5",
+      "interactiveId": null,
+      "keywords": [
+        "Select District — Page 3/5"
+      ],
+      "parentNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Select Your District"
+        },
+        "body": "Please select your district for local volunteer coordination (Page 3/5):",
+        "footer": "Tap an option below",
+        "action": {
+          "button": "Select District",
+          "sections": [
+            {
+              "title": "Districts",
+              "rows": [
+                {
+                  "id": "974eb9d5-f0df-463f-9079-52b4be4bc1cd",
+                  "title": "Perambalur District",
+                  "description": "Maha Seva Dal - Perambalur"
+                },
+                {
+                  "id": "141a2a9e-c9a5-45c3-9671-43295db1368e",
+                  "title": "Pudukkottai District",
+                  "description": "Maha Seva Dal - Pudukkottai"
+                },
+                {
+                  "id": "370eccb0-db6c-4a8d-a893-0f8b4c03622d",
+                  "title": "Ramanathapuram District",
+                  "description": "Maha Seva Dal - Ramanathapuram"
+                },
+                {
+                  "id": "7ee177a3-41d3-4784-b87c-fcec77d608ec",
+                  "title": "Ranipet District",
+                  "description": "Maha Seva Dal - Ranipet"
+                },
+                {
+                  "id": "3dfe2e0b-e47c-41f9-b5cd-722103224c75",
+                  "title": "Salem District",
+                  "description": "Maha Seva Dal - Salem"
+                },
+                {
+                  "id": "310daeb9-5208-4982-a265-d46f97cc6595",
+                  "title": "Sivaganga District",
+                  "description": "Maha Seva Dal - Sivaganga"
+                },
+                {
+                  "id": "9a153e9a-2b97-447d-91dd-0fd5628ef689",
+                  "title": "Tenkasi District",
+                  "description": "Maha Seva Dal - Tenkasi"
+                },
+                {
+                  "id": "7075b40c-a231-4817-a39f-157cbf3eae98",
+                  "title": "Thanjavur District",
+                  "description": "Maha Seva Dal - Thanjavur"
+                },
+                {
+                  "id": "74e714a8-ae26-45fe-94cd-069510ca694e",
+                  "title": "Theni District",
+                  "description": "Maha Seva Dal - Theni"
+                },
+                {
+                  "id": "502603f0-316b-4008-906f-6ad06ba35a84",
+                  "title": "More Districts (4/5)",
+                  "description": "View more districts in Tamil Nadu"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "type": "interactive",
+      "name": "Select District — Page 4/5",
+      "interactiveId": null,
+      "keywords": [
+        "Select District — Page 4/5"
+      ],
+      "parentNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Select Your District"
+        },
+        "body": "Please select your district for local volunteer coordination (Page 4/5):",
+        "footer": "Tap an option below",
+        "action": {
+          "button": "Select District",
+          "sections": [
+            {
+              "title": "Districts",
+              "rows": [
+                {
+                  "id": "7f55783d-2881-4513-bbed-f01c9966cf64",
+                  "title": "Thoothukudi District",
+                  "description": "Maha Seva Dal - Thoothukudi"
+                },
+                {
+                  "id": "31885811-e9a9-4e91-a7f2-1217638902c3",
+                  "title": "Tiruchirappalli District",
+                  "description": "Maha Seva Dal - Tiruchirappalli"
+                },
+                {
+                  "id": "4abd8078-d748-4c37-bb3b-641dac61bc40",
+                  "title": "Tirunelveli District",
+                  "description": "Maha Seva Dal - Tirunelveli"
+                },
+                {
+                  "id": "9969bb99-9a52-40b8-b60d-53140ee7e075",
+                  "title": "Tirupathur District",
+                  "description": "Maha Seva Dal - Tirupathur"
+                },
+                {
+                  "id": "12a3cbc7-968f-4cbd-9ba3-c2704c58abc6",
+                  "title": "Tiruppur District",
+                  "description": "Maha Seva Dal - Tiruppur"
+                },
+                {
+                  "id": "cde514b5-c67a-43ce-866b-3626aedab971",
+                  "title": "Tiruvallur District",
+                  "description": "Maha Seva Dal - Tiruvallur"
+                },
+                {
+                  "id": "11b32b30-12a8-4cf7-a312-d45e61bb334c",
+                  "title": "Tiruvannamalai District",
+                  "description": "Maha Seva Dal - Tiruvannamalai"
+                },
+                {
+                  "id": "0698fbb1-c614-4597-a9a7-4f4f61973a8c",
+                  "title": "Tiruvarur District",
+                  "description": "Maha Seva Dal - Tiruvarur"
+                },
+                {
+                  "id": "ac73d3a5-c61b-45a1-96bd-83494a290ec1",
+                  "title": "More Districts (5/5)",
+                  "description": "View more districts in Tamil Nadu"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "6284276c-783f-41dc-b0a0-3f66b7ab9dea",
+      "type": "interactive",
+      "name": "Select District — Page 5/5",
+      "interactiveId": null,
+      "keywords": [
+        "Select District — Page 5/5"
+      ],
+      "parentNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Select Your District"
+        },
+        "body": "Please select your district for local volunteer coordination (Page 5/5):",
+        "footer": "Tap an option below",
+        "action": {
+          "button": "Select District",
+          "sections": [
+            {
+              "title": "Districts",
+              "rows": [
+                {
+                  "id": "f9663e6b-5cde-4c38-ac29-a88d761e5552",
+                  "title": "Vellore District",
+                  "description": "Maha Seva Dal - Vellore"
+                },
+                {
+                  "id": "01588ce8-6154-4233-af3f-e3e11b772644",
+                  "title": "Viluppuram District",
+                  "description": "Maha Seva Dal - Viluppuram"
+                },
+                {
+                  "id": "dc685c41-2e00-49e2-ad0d-f94224729f8e",
+                  "title": "Virudhunagar District",
+                  "description": "Maha Seva Dal - Virudhunagar"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "type": "interactive",
+      "name": "Explorer: Seva Wings",
+      "interactiveId": "ed27b447-ff7a-4df1-a037-df50352c5a1a",
+      "keywords": [
+        "Seva Wings & Causes"
+      ],
+      "parentNodeId": "root",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "Maha Seva Dal Wings"
+        },
+        "body": "Select any wing below to learn more about our community initiatives and voluntary service fields:",
+        "footer": "Select to view details",
+        "action": {
+          "button": "View Wings",
+          "sections": [
+            {
+              "title": "Our Seva Wings",
+              "rows": [
+                {
+                  "id": "450f1cbc-878e-4d9a-bb40-05cc43c442d4",
+                  "title": "Legal Wing Info",
+                  "description": "Free citizen legal clinics and human rights awareness"
+                },
+                {
+                  "id": "59fc55c2-317f-4eb5-8dda-f25d6b7f721a",
+                  "title": "Medical Wing Info",
+                  "description": "Free health checkups, blood donation camps & medicine"
+                },
+                {
+                  "id": "106a84a1-64e1-4794-a628-ce93714c4303",
+                  "title": "Education Wing Info",
+                  "description": "Child education support, scholarships & mentorship"
+                },
+                {
+                  "id": "4f044ce8-bd7d-4794-a6f2-ad39e977cfe4",
+                  "title": "Youth & Sports Info",
+                  "description": "Leadership training, sports meets and fitness camps"
+                },
+                {
+                  "id": "951067c7-ad9f-42a0-8694-45bffb5ee192",
+                  "title": "Mahaprasadam Info",
+                  "description": "Daily Annadanam, hunger relief & disaster food drives"
+                },
+                {
+                  "id": "5cbdc42b-e179-47b1-a2e4-743e056e8b2e",
+                  "title": "General Cadre Info",
+                  "description": "Grassroots seva, environmental drives and logistics"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "aa0d9c91-7594-4d07-9a01-4a8487255186",
+      "type": "interactive",
+      "name": "Wing: Legal Wing Info",
+      "interactiveId": "450f1cbc-878e-4d9a-bb40-05cc43c442d4",
+      "keywords": [
+        "Legal Wing Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Legal Wing"
+        },
+        "body": "The Legal Wing of Maha Seva Dal conducts legal literacy workshops, consumer rights assistance, and provides free legal aid to underprivileged citizens.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "83638f5d-822e-443b-89d5-178013c2f2af",
+                "title": "Join Legal"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "5f5616a8-133c-4d40-9094-37b3dedf01f0",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "a860f33f-25c7-4914-b391-52779ed8b0e5",
+      "type": "interactive",
+      "name": "Wing: Medical Wing Info",
+      "interactiveId": "59fc55c2-317f-4eb5-8dda-f25d6b7f721a",
+      "keywords": [
+        "Medical Wing Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Medical Wing"
+        },
+        "body": "The Medical & Health Wing mobilizes volunteer doctors, organizes blood donation drives, free eye checkup camps, and community health awareness programs.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "bcdd05f6-501b-4fc3-b6e5-572fbb93f526",
+                "title": "Join Medical"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "152771a1-3753-4ed7-ad56-61335154aeff",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "16dd7565-73e2-4529-a884-7f18c5a1eaad",
+      "type": "interactive",
+      "name": "Wing: Education Wing Info",
+      "interactiveId": "106a84a1-64e1-4794-a628-ce93714c4303",
+      "keywords": [
+        "Education Wing Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Education Wing"
+        },
+        "body": "The Education & Child Welfare Wing distributes notebooks, uniforms, provides after-school tutoring for disadvantaged students, and youth career counseling.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "287cc967-7fe2-4840-a99b-6e43a3adbae3",
+                "title": "Join Education"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "3e4f504a-b879-4266-a738-e91a1d882b14",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "61d715a0-ce90-4ed8-ac93-2caf267ba432",
+      "type": "interactive",
+      "name": "Wing: Youth & Sports Info",
+      "interactiveId": "4f044ce8-bd7d-4794-a6f2-ad39e977cfe4",
+      "keywords": [
+        "Youth & Sports Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Youth & Sports"
+        },
+        "body": "The Youth & Sports Wing empowers the next generation through athletic tournaments, leadership summits, and nation-building community initiatives.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "8b87ae2e-2859-4078-83ad-5bf7f5de64e0",
+                "title": "Join Youth"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "d86d90ca-1c6c-43ab-9fc2-a1c63107231a",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "a2da5ebc-3bbb-47ef-8d43-efc19d453098",
+      "type": "interactive",
+      "name": "Wing: Mahaprasadam Info",
+      "interactiveId": "951067c7-ad9f-42a0-8694-45bffb5ee192",
+      "keywords": [
+        "Mahaprasadam Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Mahaprasadam"
+        },
+        "body": "The Community Seva & Mahaprasadam Wing serves nutritious meals to pilgrims, hospital attendants, and organizes community relief during emergencies.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "115d7344-4e44-47ff-a4df-79ab4e197a64",
+                "title": "Join Mahaprasadam"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "dffabe6d-efb8-4b3d-8f72-e35b03f791eb",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "338bdc99-4c17-46cc-a8c4-2146a25fb7f8",
+      "type": "interactive",
+      "name": "Wing: General Cadre Info",
+      "interactiveId": "5cbdc42b-e179-47b1-a2e4-743e056e8b2e",
+      "keywords": [
+        "General Cadre Info"
+      ],
+      "parentNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "General Cadre"
+        },
+        "body": "The General Seva Cadre is the backbone of Maha Seva Dal, participating in temple cleaning, tree plantation, elder care, and civic assistance.\n\nWould you like to enroll in this wing or return to main menu?",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "82ae257a-8844-4640-914b-f229c2f2ccda",
+                "title": "Join General"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "36c53866-9009-482b-b2a5-73ee0b564c4d",
+                "title": "Back to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "type": "interactive",
+      "name": "Member Services Hub",
+      "interactiveId": "df807006-f2b7-4d1f-9998-77af9a72918b",
+      "keywords": [
+        "Member Services"
+      ],
+      "parentNodeId": "root",
+      "data": {
+        "interactiveType": "list",
+        "header": {
+          "type": "text",
+          "text": "MSD Services Hub"
+        },
+        "body": "Access your volunteer membership card, check upcoming programs, or support our community seva initiatives:",
+        "footer": "Select an option",
+        "action": {
+          "button": "Choose Service",
+          "sections": [
+            {
+              "title": "Services & Help",
+              "rows": [
+                {
+                  "id": "95ccd236-3d01-4cfc-a757-19561f6ff332",
+                  "title": "My Membership Card",
+                  "description": "Check your membership approval status and digital ID card"
+                },
+                {
+                  "id": "72d7caa8-3d7b-4981-a6f9-d43b0cced4a8",
+                  "title": "Upcoming Seva Events",
+                  "description": "View upcoming Annadanam, camps and foundation events"
+                },
+                {
+                  "id": "131629cb-c781-4dc1-a158-e4aa09e6494c",
+                  "title": "Donate to Foundation",
+                  "description": "Contribute towards Mahaprasadam and 80G tax-exempt seva"
+                },
+                {
+                  "id": "65948e65-7af1-472a-aa0b-82dcbc8265ea",
+                  "title": "Book Appointment",
+                  "description": "Schedule meeting with district or state coordinator"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "cfa4c197-953c-423f-aa9f-d7dff5a486bf",
+      "type": "interactive",
+      "name": "Events: Upcoming Seva",
+      "interactiveId": "72d7caa8-3d7b-4981-a6f9-d43b0cced4a8",
+      "keywords": [
+        "Upcoming Seva Events"
+      ],
+      "parentNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Upcoming MSD Programs"
+        },
+        "body": "Upcoming Maha Seva Dal Programs:\n\n1. Guru Poornima Seva Mahotsav (Mass Annadanam & Satsang)\n2. Mahashivratri Seva Camp (Medical aid & pilgrim assistance)\n3. State-wide Mega Blood Donation Drive\n\nWant to participate as a volunteer coordinator?",
+        "footer": "Maha Seva Dal Events",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "e2f582e7-4281-4214-a18f-0c8424f6ccd9",
+                "title": "Volunteer for Event"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "55981204-1c21-48ab-b450-cf1fb0f8cc18",
+                "title": "Return to Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "79821be2-73bb-4383-85d5-86feff4efdd6",
+      "type": "interactive",
+      "name": "Donate: Seva Support",
+      "interactiveId": "131629cb-c781-4dc1-a158-e4aa09e6494c",
+      "keywords": [
+        "Donate to Foundation"
+      ],
+      "parentNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Support Maha Seva Dal"
+        },
+        "body": "Maha Seva Dal Foundation relies on voluntary contributions to support:\n\n* Daily Annadanam & Hunger Relief\n* Underprivileged Children School Kits\n* Free Healthcare Camps & Medicines\n\nAll contributions are eligible for 80G Tax Exemption receipts.",
+        "footer": "Maha Seva Dal Foundation",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "bfbecf9b-e12a-4d89-8ae9-20b20bcd00b1",
+                "title": "Show Donation QR"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "1c65eef3-b12a-4e6e-935f-50d6b45d6195",
+                "title": "Go to Main Menu"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "nodeId": "81d9390e-bcba-4149-a63f-3a1d29ebb653",
+      "type": "media",
+      "name": "Media: Official Donation QR",
+      "interactiveId": "bfbecf9b-e12a-4d89-8ae9-20b20bcd00b1",
+      "keywords": [
+        "Show Donation QR"
+      ],
+      "parentNodeId": "79821be2-73bb-4383-85d5-86feff4efdd6",
+      "data": {
+        "mediaType": "image",
+        "link": "https://mahasevadal.org/assets/qr-code.png",
+        "body": "Maha Seva Dal Foundation - Official UPI QR Code.\n\nScan using any UPI App (GPay, PhonePe, Paytm, BHIM).\nUPI ID: mahasevadal@sbi\n\nTo receive an 80G tax receipt, please reply with your Transaction ID and PAN number."
+      }
+    },
+    {
+      "nodeId": "22292467-51cd-4cc9-91d5-5489c06cb81e",
+      "type": "interactive",
+      "name": "Service: Appointment",
+      "interactiveId": "65948e65-7af1-472a-aa0b-82dcbc8265ea",
+      "keywords": [
+        "Book Appointment"
+      ],
+      "parentNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "data": {
+        "interactiveType": "button",
+        "header": {
+          "type": "text",
+          "text": "Coordinator Meeting"
+        },
+        "body": "Need to discuss a local seva project, medical camp, or legal assistance in your taluk?\n\nYou can request an appointment with the Maha Seva Dal district leadership team.",
+        "footer": "Maha Seva Dal",
+        "action": {
+          "buttons": [
+            {
+              "type": "reply",
+              "reply": {
+                "id": "1efc2810-7472-4506-b374-e37fbaa55c6a",
+                "title": "Request Meeting"
+              }
+            },
+            {
+              "type": "reply",
+              "reply": {
+                "id": "c2aa0fd1-d73b-4dd5-8f4b-b4eff333231d",
+                "title": "Home Menu"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "fromNodeId": "root",
+      "toNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "keywords": [
+        "Join Maha Seva Dal"
+      ],
+      "intentName": "Join Maha Seva Dal",
+      "delay": 0,
+      "sourceHandle": "86a7cca2-db03-4950-9b40-8673c376a3b4"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Legal Wing"
+      ],
+      "intentName": "Legal Wing",
+      "delay": 0,
+      "sourceHandle": "59bb6aae-9389-4a6f-9fe7-47ea49006ae7"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Medical & Health"
+      ],
+      "intentName": "Medical & Health",
+      "delay": 0,
+      "sourceHandle": "6be62bbd-7b98-4c48-8c67-5eecd8d71603"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Education & Child Care"
+      ],
+      "intentName": "Education & Child Care",
+      "delay": 0,
+      "sourceHandle": "701bbd8a-ec58-409d-b9cf-fa3d2d0f99b5"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Youth & Sports Wing"
+      ],
+      "intentName": "Youth & Sports Wing",
+      "delay": 0,
+      "sourceHandle": "1b95de6f-798a-455b-9c3f-9fa993f967c5"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Community & Mahaprasad"
+      ],
+      "intentName": "Community & Mahaprasad",
+      "delay": 0,
+      "sourceHandle": "a4959ac4-7989-43a3-a868-2f2300c5fbd3"
+    },
+    {
+      "fromNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "General Seva Cadre"
+      ],
+      "intentName": "General Seva Cadre",
+      "delay": 0,
+      "sourceHandle": "e1f54beb-8150-4b39-85f3-ffc5133e5b4b"
+    },
+    {
+      "fromNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "toNodeId": "bce56b55-6dd4-4a3a-8b37-59690f1d1e34",
+      "keywords": [
+        "Change Wing"
+      ],
+      "intentName": "Change Wing",
+      "delay": 0,
+      "sourceHandle": "deb9ec9c-209b-467c-b7b3-ac00c8500c7d"
+    },
+    {
+      "fromNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "toNodeId": "root",
+      "keywords": [
+        "Main Menu"
+      ],
+      "intentName": "Main Menu",
+      "delay": 0,
+      "sourceHandle": "969ff292-0c05-4fe0-b959-b19e612a8699"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Ariyalur District"
+      ],
+      "intentName": "Ariyalur District",
+      "delay": 0,
+      "sourceHandle": "99b1a43a-27a8-4fdf-9937-35c337b63359"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Chengalpattu District"
+      ],
+      "intentName": "Chengalpattu District",
+      "delay": 0,
+      "sourceHandle": "190b1c53-2e3c-465f-995e-ff8d8803bc07"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Chennai District"
+      ],
+      "intentName": "Chennai District",
+      "delay": 0,
+      "sourceHandle": "5bd48d96-719b-4a56-98b4-225b31c11c76"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Coimbatore District"
+      ],
+      "intentName": "Coimbatore District",
+      "delay": 0,
+      "sourceHandle": "ef1422b3-a8cd-4499-ae7b-822720e25d06"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Cuddalore District"
+      ],
+      "intentName": "Cuddalore District",
+      "delay": 0,
+      "sourceHandle": "34be0482-1cb5-47c4-a9ba-c6617e1c11b5"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Dharmapuri District"
+      ],
+      "intentName": "Dharmapuri District",
+      "delay": 0,
+      "sourceHandle": "ee252543-12f8-4467-ad28-2ca3470e8bd1"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Dindigul District"
+      ],
+      "intentName": "Dindigul District",
+      "delay": 0,
+      "sourceHandle": "c6882b0f-5004-489f-a1f9-6680d6f547d4"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Erode District"
+      ],
+      "intentName": "Erode District",
+      "delay": 0,
+      "sourceHandle": "b0c7cc87-71d7-4400-b4fa-59c0de7034de"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Kallakurichi District"
+      ],
+      "intentName": "Kallakurichi District",
+      "delay": 0,
+      "sourceHandle": "c50cfac9-1f9c-435a-96cf-1ec73bcf9229"
+    },
+    {
+      "fromNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "toNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "keywords": [
+        "More Districts (2/5)"
+      ],
+      "intentName": "More Districts (2/5)",
+      "delay": 0,
+      "sourceHandle": "6596793b-eb11-4679-a58c-fc96014066e2"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Kanchipuram District"
+      ],
+      "intentName": "Kanchipuram District",
+      "delay": 0,
+      "sourceHandle": "089c89d1-b1e2-4926-8525-7c6f32f8457a"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Kanyakumari District"
+      ],
+      "intentName": "Kanyakumari District",
+      "delay": 0,
+      "sourceHandle": "1ef4e38e-e192-49d0-a9e2-34f5643168c5"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Karur District"
+      ],
+      "intentName": "Karur District",
+      "delay": 0,
+      "sourceHandle": "b97f4307-4b5f-42ca-9524-59a09ea81fc3"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Krishnagiri District"
+      ],
+      "intentName": "Krishnagiri District",
+      "delay": 0,
+      "sourceHandle": "56b9ce7f-977e-4e1c-a364-880af63bea45"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Madurai District"
+      ],
+      "intentName": "Madurai District",
+      "delay": 0,
+      "sourceHandle": "e52245e1-dde1-4f7b-bcb6-3a1534ee7907"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Mayiladuthurai District"
+      ],
+      "intentName": "Mayiladuthurai District",
+      "delay": 0,
+      "sourceHandle": "07fdbd94-12ce-4220-8282-9607bfbc27f8"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Nagapattinam District"
+      ],
+      "intentName": "Nagapattinam District",
+      "delay": 0,
+      "sourceHandle": "73973484-77e1-4d88-9183-29b825ac4598"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Namakkal District"
+      ],
+      "intentName": "Namakkal District",
+      "delay": 0,
+      "sourceHandle": "63f75321-eaee-4e88-bc40-63fb705c71d2"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Nilgiris District"
+      ],
+      "intentName": "Nilgiris District",
+      "delay": 0,
+      "sourceHandle": "9337474f-8c12-4662-ada4-21b9dee65ff8"
+    },
+    {
+      "fromNodeId": "54017d7b-327e-4998-b9f6-2a470de1e887",
+      "toNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "keywords": [
+        "More Districts (3/5)"
+      ],
+      "intentName": "More Districts (3/5)",
+      "delay": 0,
+      "sourceHandle": "3ae27175-b0d7-44ab-9310-ea415347720f"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Perambalur District"
+      ],
+      "intentName": "Perambalur District",
+      "delay": 0,
+      "sourceHandle": "974eb9d5-f0df-463f-9079-52b4be4bc1cd"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Pudukkottai District"
+      ],
+      "intentName": "Pudukkottai District",
+      "delay": 0,
+      "sourceHandle": "141a2a9e-c9a5-45c3-9671-43295db1368e"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Ramanathapuram District"
+      ],
+      "intentName": "Ramanathapuram District",
+      "delay": 0,
+      "sourceHandle": "370eccb0-db6c-4a8d-a893-0f8b4c03622d"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Ranipet District"
+      ],
+      "intentName": "Ranipet District",
+      "delay": 0,
+      "sourceHandle": "7ee177a3-41d3-4784-b87c-fcec77d608ec"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Salem District"
+      ],
+      "intentName": "Salem District",
+      "delay": 0,
+      "sourceHandle": "3dfe2e0b-e47c-41f9-b5cd-722103224c75"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Sivaganga District"
+      ],
+      "intentName": "Sivaganga District",
+      "delay": 0,
+      "sourceHandle": "310daeb9-5208-4982-a265-d46f97cc6595"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tenkasi District"
+      ],
+      "intentName": "Tenkasi District",
+      "delay": 0,
+      "sourceHandle": "9a153e9a-2b97-447d-91dd-0fd5628ef689"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Thanjavur District"
+      ],
+      "intentName": "Thanjavur District",
+      "delay": 0,
+      "sourceHandle": "7075b40c-a231-4817-a39f-157cbf3eae98"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Theni District"
+      ],
+      "intentName": "Theni District",
+      "delay": 0,
+      "sourceHandle": "74e714a8-ae26-45fe-94cd-069510ca694e"
+    },
+    {
+      "fromNodeId": "7f02338f-191d-45f2-82df-0cee312d9510",
+      "toNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "keywords": [
+        "More Districts (4/5)"
+      ],
+      "intentName": "More Districts (4/5)",
+      "delay": 0,
+      "sourceHandle": "502603f0-316b-4008-906f-6ad06ba35a84"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Thoothukudi District"
+      ],
+      "intentName": "Thoothukudi District",
+      "delay": 0,
+      "sourceHandle": "7f55783d-2881-4513-bbed-f01c9966cf64"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tiruchirappalli District"
+      ],
+      "intentName": "Tiruchirappalli District",
+      "delay": 0,
+      "sourceHandle": "31885811-e9a9-4e91-a7f2-1217638902c3"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tirunelveli District"
+      ],
+      "intentName": "Tirunelveli District",
+      "delay": 0,
+      "sourceHandle": "4abd8078-d748-4c37-bb3b-641dac61bc40"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tirupathur District"
+      ],
+      "intentName": "Tirupathur District",
+      "delay": 0,
+      "sourceHandle": "9969bb99-9a52-40b8-b60d-53140ee7e075"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tiruppur District"
+      ],
+      "intentName": "Tiruppur District",
+      "delay": 0,
+      "sourceHandle": "12a3cbc7-968f-4cbd-9ba3-c2704c58abc6"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tiruvallur District"
+      ],
+      "intentName": "Tiruvallur District",
+      "delay": 0,
+      "sourceHandle": "cde514b5-c67a-43ce-866b-3626aedab971"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tiruvannamalai District"
+      ],
+      "intentName": "Tiruvannamalai District",
+      "delay": 0,
+      "sourceHandle": "11b32b30-12a8-4cf7-a312-d45e61bb334c"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Tiruvarur District"
+      ],
+      "intentName": "Tiruvarur District",
+      "delay": 0,
+      "sourceHandle": "0698fbb1-c614-4597-a9a7-4f4f61973a8c"
+    },
+    {
+      "fromNodeId": "d3d8ba15-c5e8-4641-87c6-8c3a2f5eff47",
+      "toNodeId": "6284276c-783f-41dc-b0a0-3f66b7ab9dea",
+      "keywords": [
+        "More Districts (5/5)"
+      ],
+      "intentName": "More Districts (5/5)",
+      "delay": 0,
+      "sourceHandle": "ac73d3a5-c61b-45a1-96bd-83494a290ec1"
+    },
+    {
+      "fromNodeId": "6284276c-783f-41dc-b0a0-3f66b7ab9dea",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Vellore District"
+      ],
+      "intentName": "Vellore District",
+      "delay": 0,
+      "sourceHandle": "f9663e6b-5cde-4c38-ac29-a88d761e5552"
+    },
+    {
+      "fromNodeId": "6284276c-783f-41dc-b0a0-3f66b7ab9dea",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Viluppuram District"
+      ],
+      "intentName": "Viluppuram District",
+      "delay": 0,
+      "sourceHandle": "01588ce8-6154-4233-af3f-e3e11b772644"
+    },
+    {
+      "fromNodeId": "6284276c-783f-41dc-b0a0-3f66b7ab9dea",
+      "toNodeId": "d6b48ca7-58cf-40cc-aecb-612dd97f8288",
+      "keywords": [
+        "Virudhunagar District"
+      ],
+      "intentName": "Virudhunagar District",
+      "delay": 0,
+      "sourceHandle": "dc685c41-2e00-49e2-ad0d-f94224729f8e"
+    },
+    {
+      "fromNodeId": "root",
+      "toNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "keywords": [
+        "Seva Wings & Causes"
+      ],
+      "intentName": "Seva Wings & Causes",
+      "delay": 0,
+      "sourceHandle": "ed27b447-ff7a-4df1-a037-df50352c5a1a"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "aa0d9c91-7594-4d07-9a01-4a8487255186",
+      "keywords": [
+        "Legal Wing Info"
+      ],
+      "intentName": "Legal Wing Info",
+      "delay": 0,
+      "sourceHandle": "450f1cbc-878e-4d9a-bb40-05cc43c442d4"
+    },
+    {
+      "fromNodeId": "aa0d9c91-7594-4d07-9a01-4a8487255186",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join Legal"
+      ],
+      "intentName": "Join Legal",
+      "delay": 0,
+      "sourceHandle": "83638f5d-822e-443b-89d5-178013c2f2af"
+    },
+    {
+      "fromNodeId": "aa0d9c91-7594-4d07-9a01-4a8487255186",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "5f5616a8-133c-4d40-9094-37b3dedf01f0"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "a860f33f-25c7-4914-b391-52779ed8b0e5",
+      "keywords": [
+        "Medical Wing Info"
+      ],
+      "intentName": "Medical Wing Info",
+      "delay": 0,
+      "sourceHandle": "59fc55c2-317f-4eb5-8dda-f25d6b7f721a"
+    },
+    {
+      "fromNodeId": "a860f33f-25c7-4914-b391-52779ed8b0e5",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join Medical"
+      ],
+      "intentName": "Join Medical",
+      "delay": 0,
+      "sourceHandle": "bcdd05f6-501b-4fc3-b6e5-572fbb93f526"
+    },
+    {
+      "fromNodeId": "a860f33f-25c7-4914-b391-52779ed8b0e5",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "152771a1-3753-4ed7-ad56-61335154aeff"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "16dd7565-73e2-4529-a884-7f18c5a1eaad",
+      "keywords": [
+        "Education Wing Info"
+      ],
+      "intentName": "Education Wing Info",
+      "delay": 0,
+      "sourceHandle": "106a84a1-64e1-4794-a628-ce93714c4303"
+    },
+    {
+      "fromNodeId": "16dd7565-73e2-4529-a884-7f18c5a1eaad",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join Education"
+      ],
+      "intentName": "Join Education",
+      "delay": 0,
+      "sourceHandle": "287cc967-7fe2-4840-a99b-6e43a3adbae3"
+    },
+    {
+      "fromNodeId": "16dd7565-73e2-4529-a884-7f18c5a1eaad",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "3e4f504a-b879-4266-a738-e91a1d882b14"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "61d715a0-ce90-4ed8-ac93-2caf267ba432",
+      "keywords": [
+        "Youth & Sports Info"
+      ],
+      "intentName": "Youth & Sports Info",
+      "delay": 0,
+      "sourceHandle": "4f044ce8-bd7d-4794-a6f2-ad39e977cfe4"
+    },
+    {
+      "fromNodeId": "61d715a0-ce90-4ed8-ac93-2caf267ba432",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join Youth"
+      ],
+      "intentName": "Join Youth",
+      "delay": 0,
+      "sourceHandle": "8b87ae2e-2859-4078-83ad-5bf7f5de64e0"
+    },
+    {
+      "fromNodeId": "61d715a0-ce90-4ed8-ac93-2caf267ba432",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "d86d90ca-1c6c-43ab-9fc2-a1c63107231a"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "a2da5ebc-3bbb-47ef-8d43-efc19d453098",
+      "keywords": [
+        "Mahaprasadam Info"
+      ],
+      "intentName": "Mahaprasadam Info",
+      "delay": 0,
+      "sourceHandle": "951067c7-ad9f-42a0-8694-45bffb5ee192"
+    },
+    {
+      "fromNodeId": "a2da5ebc-3bbb-47ef-8d43-efc19d453098",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join Mahaprasadam"
+      ],
+      "intentName": "Join Mahaprasadam",
+      "delay": 0,
+      "sourceHandle": "115d7344-4e44-47ff-a4df-79ab4e197a64"
+    },
+    {
+      "fromNodeId": "a2da5ebc-3bbb-47ef-8d43-efc19d453098",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "dffabe6d-efb8-4b3d-8f72-e35b03f791eb"
+    },
+    {
+      "fromNodeId": "680f9bfe-a42d-4b66-9e52-7e4a8788f151",
+      "toNodeId": "338bdc99-4c17-46cc-a8c4-2146a25fb7f8",
+      "keywords": [
+        "General Cadre Info"
+      ],
+      "intentName": "General Cadre Info",
+      "delay": 0,
+      "sourceHandle": "5cbdc42b-e179-47b1-a2e4-743e056e8b2e"
+    },
+    {
+      "fromNodeId": "338bdc99-4c17-46cc-a8c4-2146a25fb7f8",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Join General"
+      ],
+      "intentName": "Join General",
+      "delay": 0,
+      "sourceHandle": "82ae257a-8844-4640-914b-f229c2f2ccda"
+    },
+    {
+      "fromNodeId": "338bdc99-4c17-46cc-a8c4-2146a25fb7f8",
+      "toNodeId": "root",
+      "keywords": [
+        "Back to Menu"
+      ],
+      "intentName": "Back to Menu",
+      "delay": 0,
+      "sourceHandle": "36c53866-9009-482b-b2a5-73ee0b564c4d"
+    },
+    {
+      "fromNodeId": "root",
+      "toNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "keywords": [
+        "Member Services"
+      ],
+      "intentName": "Member Services",
+      "delay": 0,
+      "sourceHandle": "df807006-f2b7-4d1f-9998-77af9a72918b"
+    },
+    {
+      "fromNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "toNodeId": "cfa4c197-953c-423f-aa9f-d7dff5a486bf",
+      "keywords": [
+        "Upcoming Seva Events"
+      ],
+      "intentName": "Upcoming Seva Events",
+      "delay": 0,
+      "sourceHandle": "72d7caa8-3d7b-4981-a6f9-d43b0cced4a8"
+    },
+    {
+      "fromNodeId": "cfa4c197-953c-423f-aa9f-d7dff5a486bf",
+      "toNodeId": "17d6cee3-2f5a-4d02-acc8-07a5c90c60e6",
+      "keywords": [
+        "Volunteer for Event"
+      ],
+      "intentName": "Volunteer for Event",
+      "delay": 0,
+      "sourceHandle": "e2f582e7-4281-4214-a18f-0c8424f6ccd9"
+    },
+    {
+      "fromNodeId": "cfa4c197-953c-423f-aa9f-d7dff5a486bf",
+      "toNodeId": "root",
+      "keywords": [
+        "Return to Menu"
+      ],
+      "intentName": "Return to Menu",
+      "delay": 0,
+      "sourceHandle": "55981204-1c21-48ab-b450-cf1fb0f8cc18"
+    },
+    {
+      "fromNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "toNodeId": "79821be2-73bb-4383-85d5-86feff4efdd6",
+      "keywords": [
+        "Donate to Foundation"
+      ],
+      "intentName": "Donate to Foundation",
+      "delay": 0,
+      "sourceHandle": "131629cb-c781-4dc1-a158-e4aa09e6494c"
+    },
+    {
+      "fromNodeId": "79821be2-73bb-4383-85d5-86feff4efdd6",
+      "toNodeId": "root",
+      "keywords": [
+        "Go to Main Menu"
+      ],
+      "intentName": "Go to Main Menu",
+      "delay": 0,
+      "sourceHandle": "1c65eef3-b12a-4e6e-935f-50d6b45d6195"
+    },
+    {
+      "fromNodeId": "79821be2-73bb-4383-85d5-86feff4efdd6",
+      "toNodeId": "81d9390e-bcba-4149-a63f-3a1d29ebb653",
+      "keywords": [
+        "Show Donation QR"
+      ],
+      "intentName": "Show Donation QR",
+      "delay": 0,
+      "sourceHandle": "bfbecf9b-e12a-4d89-8ae9-20b20bcd00b1"
+    },
+    {
+      "fromNodeId": "a0e8e3b4-f4fc-4c86-b2e5-5dd97331d4c7",
+      "toNodeId": "22292467-51cd-4cc9-91d5-5489c06cb81e",
+      "keywords": [
+        "Book Appointment"
+      ],
+      "intentName": "Book Appointment",
+      "delay": 0,
+      "sourceHandle": "65948e65-7af1-472a-aa0b-82dcbc8265ea"
+    },
+    {
+      "fromNodeId": "22292467-51cd-4cc9-91d5-5489c06cb81e",
+      "toNodeId": "root",
+      "keywords": [
+        "Home Menu"
+      ],
+      "intentName": "Home Menu",
+      "delay": 0,
+      "sourceHandle": "c2aa0fd1-d73b-4dd5-8f4b-b4eff333231d"
+    }
+  ],
+  "manualResolution": false
+}

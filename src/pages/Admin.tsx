@@ -36,6 +36,8 @@ import {
   ExternalLink,
   Droplet,
   User,
+  Calendar,
+  MessageCircle,
 } from "lucide-react";
 import QRCode from "qrcode";
 import DigitalIdCard, {
@@ -43,6 +45,8 @@ import DigitalIdCard, {
   OfficialSignatureSvg,
   generateIdCardPdf,
   generateIdCardCanvas,
+  generateIdCardBackCanvas,
+  generateCombinedIdCardCanvas,
 } from "@/components/DigitalIdCard";
 
 interface Member {
@@ -51,6 +55,7 @@ interface Member {
   fullName: string;
   fatherName: string;
   dob: string;
+  age?: number;
   gender: string;
   mobile: string;
   whatsapp?: string;
@@ -68,29 +73,50 @@ interface Member {
   hoursAvailable?: string;
   idProofType?: string;
   idProofNumber?: string;
+  pledgeAccepted?: boolean;
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
+  approvedAt?: string;
 }
 
 const INDIAN_STATES = [
   "ALL",
+  "Andaman and Nicobar Islands",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chandigarh",
+  "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu and Kashmir",
+  "Jharkhand",
   "Karnataka",
+  "Kerala",
+  "Ladakh",
+  "Lakshadweep",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Puducherry",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
   "Tamil Nadu",
   "Telangana",
-  "Andhra Pradesh",
-  "Jharkhand",
-  "Maharashtra",
-  "Kerala",
-  "Delhi",
+  "Tripura",
   "Uttar Pradesh",
-  "Bihar",
-  "Gujarat",
-  "Rajasthan",
-  "Punjab",
-  "Haryana",
-  "Odisha",
+  "Uttarakhand",
   "West Bengal",
-  "Assam",
 ];
 
 const WINGS = [
@@ -103,10 +129,55 @@ const WINGS = [
   "General Seva Cadre",
 ];
 
-const Admin = () => {
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("msd_admin_token")
+const formatDobDisplay = (dobString?: string): string => {
+  if (!dobString) return "—";
+  const parts = dobString.split("-");
+  if (parts.length !== 3) return dobString;
+  const [y, m, d] = parts;
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const idx = parseInt(m, 10) - 1;
+  const monthName = monthNames[idx] || m;
+  return `${parseInt(d, 10)} ${monthName} ${y}`;
+};
+
+const WhatsAppIcon: React.FC<{ size?: number; className?: string }> = ({ size = 14, className = "" }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    style={{ display: "inline-block", verticalAlign: "middle" }}
+  >
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+  </svg>
+);
+
+const getMemberWhatsAppUrl = (member: { whatsapp?: string; mobile?: string; fullName: string; registrationId: string }) => {
+  const raw = member.whatsapp && member.whatsapp.trim() && member.whatsapp.toLowerCase() !== "same"
+    ? member.whatsapp
+    : member.mobile;
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const full = digits.length === 10 ? `91${digits}` : digits;
+  const text = encodeURIComponent(
+    `Namaste ${member.fullName}, reaching out from Maha Seva Dal Secretariat regarding your registration (${member.registrationId}).`
   );
+  return `https://wa.me/${full}?text=${text}`;
+};
+
+const Admin = () => {
+  const [token, setToken] = useState<string | null>(() => {
+    const urlToken = new URLSearchParams(window.location.search).get("token");
+    if (urlToken) {
+      localStorage.setItem("msd_admin_token", urlToken);
+      return urlToken;
+    }
+    return localStorage.getItem("msd_admin_token");
+  });
 
   // Login form state
   const [username, setUsername] = useState("");
@@ -172,13 +243,24 @@ const Admin = () => {
     }
   };
 
-  const handleDownloadPng = async (member: Member) => {
+  const handleDownloadPng = async (member: Member, mode: "both" | "front" | "back" = "both") => {
     setDownloadingPng(true);
     try {
-      const dataUrl = await generateIdCardCanvas(member, selectedMemberQr, cardSettings);
+      let dataUrl = "";
+      let filenameSuffix = "BothSides";
+      if (mode === "front") {
+        dataUrl = await generateIdCardCanvas(member, selectedMemberQr, cardSettings);
+        filenameSuffix = "Front";
+      } else if (mode === "back") {
+        dataUrl = await generateIdCardBackCanvas(member);
+        filenameSuffix = "Back";
+      } else {
+        dataUrl = await generateCombinedIdCardCanvas(member, selectedMemberQr, cardSettings);
+        filenameSuffix = "BothSides";
+      }
       if (!dataUrl) throw new Error("Could not render card canvas.");
       const link = document.createElement("a");
-      link.download = `MSD_ID_Card_${member.registrationId || "member"}.png`;
+      link.download = `MSD_ID_Card_${filenameSuffix}_${member.registrationId || "member"}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -624,7 +706,7 @@ const Admin = () => {
   // ─── LOGIN SCREEN ──────────────────────────────────────────────────────────
   if (!token) {
     return (
-      <PageLayout>
+      <PageLayout hideHeader>
         <section className="py-16 lg:py-24 bg-canvas min-h-[85vh] flex items-center justify-center">
           <div className="max-w-md w-full mx-4">
             <div className="card-feature-cream bg-white border border-hairline shadow-xl rounded-2xl p-8 relative overflow-hidden">
@@ -633,9 +715,9 @@ const Admin = () => {
 
               <div className="text-center mb-8">
                 <img
-                  src="https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png"
+                  src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
                   alt="MSD Logo"
-                  className="w-16 h-16 rounded-full mx-auto mb-3 border border-hairline shadow-sm"
+                  className="w-16 h-16 rounded-full mx-auto mb-3 shadow-xs object-contain"
                 />
                 <h1 className="font-serif text-2xl font-bold text-ink">Maha Seva Dal</h1>
                 <p className="text-xs text-[#FF6200] font-medium uppercase tracking-wider mt-0.5">
@@ -734,37 +816,32 @@ const Admin = () => {
 
   // ─── AUTHENTICATED DASHBOARD ───────────────────────────────────────────────
   return (
-    <PageLayout>
-      <section className="py-8 bg-canvas min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <PageLayout hideHeader>
+      <section className="py-6 sm:py-8 bg-canvas min-h-screen">
+        <div
+          className="mx-auto px-2 sm:px-4"
+          style={{ maxWidth: "1600px", width: "95%", margin: "0 auto" }}
+        >
           {/* Top Admin Navigation Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-hairline mb-8">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-hairline mb-3">
+            <div className="flex items-center gap-2.5">
               <img
-                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png"
+                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
                 alt="MSD Logo"
-                className="w-10 h-10 rounded-full border border-hairline"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex-shrink-0 object-contain shadow-xs"
               />
               <div>
-                <h1 className="font-serif text-2xl font-bold text-ink">Central Cadre Directory</h1>
-                <p className="text-xs text-muted-editorial">
+                <h1 className="font-serif text-lg sm:text-xl font-bold text-ink leading-tight">Central Cadre Directory</h1>
+                <p className="text-[11px] text-muted-editorial">
                   Maha Seva Dal (Estd. 1947) · National Cadre Management & Approvals
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                onClick={() => setCardSettingsModalOpen(true)}
-                className="bg-[#faf3ee] hover:bg-[#faede3] text-[#FF6200] border border-[#e8d2be] text-xs px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-                title="Configure Official Seal and Signature"
-              >
-                <Award size={13} />
-                <span>Card Seal & Signature</span>
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleExportCSV}
-                className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
+                className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1.5"
                 title="Download CSV"
               >
                 <Download size={13} />
@@ -772,7 +849,7 @@ const Admin = () => {
               </button>
               <button
                 onClick={fetchMembers}
-                className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
+                className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1.5"
                 title="Refresh list"
               >
                 <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
@@ -780,7 +857,7 @@ const Admin = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 transition-colors"
+                className="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors"
               >
                 <LogOut size={13} />
                 <span>Logout</span>
@@ -790,130 +867,126 @@ const Admin = () => {
 
           {/* Status Alert Banner */}
           {statusMessage && (
-            <div className="mb-6 p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in shadow-xs">
-              <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0" />
+            <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in shadow-2xs">
+              <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0" />
               <span>{statusMessage}</span>
             </div>
           )}
 
           {/* KPI Statistics Row (Clickable to Filter) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-3">
             <div
               onClick={() => setFilterStatus("ALL")}
-              className={`bg-white border p-5 rounded-2xl shadow-xs cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 select-none ${
+              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
                 filterStatus === "ALL"
-                  ? "border-[#FF6200] ring-2 ring-[#FF6200]/30 bg-[#faf6ee]/50"
+                  ? "border-[#FF6200] ring-1.5 ring-[#FF6200]/30 bg-[#faf6ee]/50"
                   : "border-hairline hover:border-[#FF6200]/50"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-muted-editorial uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10.5px] font-bold text-muted-editorial uppercase tracking-wider">
                   Total Registrations
                 </span>
-                <Users size={18} className="text-[#FF6200]" />
+                <Users size={15} className="text-[#FF6200]" />
               </div>
-              <div className="font-serif text-3xl font-bold text-ink">{stats.total}</div>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[11px] text-muted-editorial">All Central Cadre</span>
-                <span className="text-[10px] text-[#FF6200] font-bold">View All →</span>
+              <div className="flex items-baseline justify-between">
+                <div className="font-serif text-2xl font-black text-ink leading-none">{stats.total}</div>
+                <span className="text-[10px] text-[#FF6200] font-semibold hover:underline">View All →</span>
               </div>
             </div>
 
             <div
               onClick={() => setFilterStatus("PENDING")}
-              className={`bg-white border p-5 rounded-2xl shadow-xs cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 select-none ${
+              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
                 filterStatus === "PENDING"
-                  ? "border-amber-500 ring-2 ring-amber-400/40 bg-amber-50/70"
+                  ? "border-amber-500 ring-1.5 ring-amber-400/40 bg-amber-50/70"
                   : "border-amber-200/80 hover:border-amber-400 bg-amber-50/20"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10.5px] font-bold text-amber-800 uppercase tracking-wider">
                   Pending Verification
                 </span>
-                <Clock size={18} className="text-amber-600" />
+                <Clock size={15} className="text-amber-600" />
               </div>
-              <div className="font-serif text-3xl font-bold text-amber-900">{stats.pending}</div>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[11px] text-amber-700">Awaiting Action</span>
-                <span className="text-[10px] text-amber-700 font-bold">Filter Pending →</span>
+              <div className="flex items-baseline justify-between">
+                <div className="font-serif text-2xl font-black text-amber-900 leading-none">{stats.pending}</div>
+                <span className="text-[10px] text-amber-700 font-semibold hover:underline">Filter Pending →</span>
               </div>
             </div>
 
             <div
               onClick={() => setFilterStatus("APPROVED")}
-              className={`bg-white border p-5 rounded-2xl shadow-xs cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 select-none ${
+              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
                 filterStatus === "APPROVED"
-                  ? "border-emerald-500 ring-2 ring-emerald-400/40 bg-emerald-50/70"
+                  ? "border-emerald-500 ring-1.5 ring-emerald-400/40 bg-emerald-50/70"
                   : "border-emerald-200/80 hover:border-emerald-400 bg-emerald-50/20"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider">
                   Approved Members
                 </span>
-                <CheckCircle2 size={18} className="text-emerald-600" />
+                <CheckCircle2 size={15} className="text-emerald-600" />
               </div>
-              <div className="font-serif text-3xl font-bold text-emerald-900">{stats.approved}</div>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[11px] text-emerald-700">Active Official Cadre</span>
-                <span className="text-[10px] text-emerald-700 font-bold">Filter Approved →</span>
+              <div className="flex items-baseline justify-between">
+                <div className="font-serif text-2xl font-black text-emerald-900 leading-none">{stats.approved}</div>
+                <span className="text-[10px] text-emerald-700 font-semibold hover:underline">Filter Approved →</span>
               </div>
             </div>
 
             <div
               onClick={() => setFilterStatus("REJECTED")}
-              className={`bg-white border p-5 rounded-2xl shadow-xs cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 select-none ${
+              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
                 filterStatus === "REJECTED"
-                  ? "border-rose-500 ring-2 ring-rose-400/40 bg-rose-50/70"
+                  ? "border-rose-500 ring-1.5 ring-rose-400/40 bg-rose-50/70"
                   : "border-rose-200/80 hover:border-rose-400 bg-rose-50/20"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-rose-800 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10.5px] font-bold text-rose-800 uppercase tracking-wider">
                   Rejected
                 </span>
-                <XCircle size={18} className="text-rose-600" />
+                <XCircle size={15} className="text-rose-600" />
               </div>
-              <div className="font-serif text-3xl font-bold text-rose-900">{stats.rejected}</div>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[11px] text-rose-700">Declined Records</span>
-                <span className="text-[10px] text-rose-700 font-bold">Filter Rejected →</span>
+              <div className="flex items-baseline justify-between">
+                <div className="font-serif text-2xl font-black text-rose-900 leading-none">{stats.rejected}</div>
+                <span className="text-[10px] text-rose-700 font-semibold hover:underline">Filter Rejected →</span>
               </div>
             </div>
           </div>
 
           {/* Search & Filter Controls Panel */}
-          <div className="bg-white border border-hairline rounded-2xl p-4 sm:p-5 shadow-xs mb-6">
-            <div className="flex flex-col lg:flex-row gap-3.5 items-stretch lg:items-center justify-between">
+          <div className="bg-white border border-hairline rounded-xl p-2.5 sm:p-3 shadow-2xs mb-3">
+            <div className="flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
               {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-editorial" />
+              <div className="relative flex-1 max-w-sm">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-editorial" />
                 <input
                   type="text"
                   placeholder="Search by Name, Phone, Reg ID, District..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full text-xs pl-10 pr-9 py-2.5 rounded-xl border border-hairline bg-surface-soft text-ink placeholder:text-muted-editorial focus:outline-none focus:border-[#FF6200] focus:bg-white transition-colors"
+                  className="w-full text-xs pl-8 pr-8 py-1.5 h-9 rounded-lg border border-hairline bg-surface-soft text-ink placeholder:text-muted-editorial focus:outline-none focus:border-[#FF6200] focus:bg-white transition-colors"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-editorial hover:text-ink text-xs font-bold"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-editorial hover:text-ink text-xs font-bold"
                   >
                     ✕
                   </button>
                 )}
               </div>
 
-              {/* Dropdown Filters & Reset */}
-              <div className="flex flex-wrap items-center gap-2.5">
+              {/* Dropdown Filters & Inline Count */}
+              <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={filterState}
                   onChange={(e) => setFilterState(e.target.value)}
-                  className="text-xs px-3.5 py-2.5 rounded-xl border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-medium"
+                  className="text-xs px-2.5 py-1.5 h-9 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-medium"
                 >
-                  <option value="ALL">All States (Jurisdiction)</option>
+                  <option value="ALL">All States</option>
                   {INDIAN_STATES.filter((s) => s !== "ALL").map((st) => (
                     <option key={st} value={st}>
                       {st}
@@ -924,7 +997,7 @@ const Admin = () => {
                 <select
                   value={filterWing}
                   onChange={(e) => setFilterWing(e.target.value)}
-                  className="text-xs px-3.5 py-2.5 rounded-xl border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-medium"
+                  className="text-xs px-2.5 py-1.5 h-9 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-medium"
                 >
                   <option value="ALL">All Assigned Wings</option>
                   {WINGS.filter((w) => w !== "ALL").map((wg) => (
@@ -937,12 +1010,12 @@ const Admin = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="text-xs px-3.5 py-2.5 rounded-xl border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-semibold"
+                  className="text-xs px-2.5 py-1.5 h-9 rounded-lg border border-hairline bg-surface-soft text-ink focus:outline-none focus:border-[#FF6200] font-semibold"
                 >
-                  <option value="ALL">Status: All Records</option>
-                  <option value="PENDING">Status: 🟡 Pending Only</option>
-                  <option value="APPROVED">Status: 🟢 Approved Only</option>
-                  <option value="REJECTED">Status: 🔴 Rejected Only</option>
+                  <option value="ALL">Status: All</option>
+                  <option value="PENDING">🟡 Pending</option>
+                  <option value="APPROVED">🟢 Approved</option>
+                  <option value="REJECTED">🔴 Rejected</option>
                 </select>
 
                 {(search || filterState !== "ALL" || filterWing !== "ALL" || filterStatus !== "ALL") && (
@@ -953,30 +1026,24 @@ const Admin = () => {
                       setFilterWing("ALL");
                       setFilterStatus("ALL");
                     }}
-                    className="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-xl font-medium transition-colors"
+                    className="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1.5 h-9 rounded-lg font-medium transition-colors"
                   >
-                    Reset Filters
+                    Reset
                   </button>
                 )}
-              </div>
-            </div>
 
-            {/* Live Count Bar */}
-            <div className="flex items-center justify-between text-[11px] text-muted-editorial pt-3 mt-3 border-t border-hairline">
-              <span>
-                Showing <strong className="text-ink">{members.length}</strong> of{" "}
-                <strong className="text-ink">{stats.total}</strong> registered members
-              </span>
-              {filterStatus !== "ALL" && (
-                <span className="font-semibold text-[#FF6200]">
-                  Active filter: Status is {filterStatus}
-                </span>
-              )}
+                <div className="hidden lg:flex items-center text-[11px] text-muted-editorial ml-2 pl-2 border-l border-hairline whitespace-nowrap">
+                  <span>
+                    <strong className="text-ink font-semibold">{members.length}</strong> of{" "}
+                    <strong className="text-ink font-semibold">{stats.total}</strong> members
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Members Data Table */}
-          <div className="bg-white border border-hairline rounded-xl shadow-sm overflow-hidden mb-12">
+          <div className="bg-white border border-hairline rounded-xl shadow-xs overflow-hidden mb-6">
             {loading ? (
               <div className="p-16 text-center text-muted-editorial text-sm">
                 <span className="animate-spin inline-block mr-2">⏳</span>
@@ -994,68 +1061,71 @@ const Admin = () => {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[950px]">
+              <div className="overflow-x-auto w-full">
+                <table
+                  className="w-full text-left border-collapse table-auto"
+                  style={{ tableLayout: "auto", width: "100%" }}
+                >
                   <thead>
                     <tr className="bg-surface-soft border-b border-hairline text-[11px] font-semibold text-muted-editorial uppercase tracking-wider">
-                      <th className="py-3.5 px-4">Member Profile</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Registration ID</th>
-                      <th className="py-3.5 px-4">State & District</th>
-                      <th className="py-3.5 px-4">Selected Wing</th>
-                      <th className="py-3.5 px-4">Contact</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Enrolled On</th>
-                      <th className="py-3.5 px-4 text-center whitespace-nowrap w-36">Status</th>
-                      <th className="py-3.5 px-4 text-center whitespace-nowrap w-52">Actions</th>
+                      <th className="py-3 px-3 text-left min-w-[170px] 2xl:min-w-[210px]">Member Profile</th>
+                      <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[180px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Reg ID</th>
+                      <th className="py-3 px-2 text-left min-w-[140px] 2xl:min-w-[175px]">State & District</th>
+                      <th className="py-3 px-2 text-left min-w-[135px] 2xl:min-w-[170px]">Wing</th>
+                      <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[175px]">Contact</th>
+                      <th className="py-3 px-2 text-left min-w-[95px] 2xl:min-w-[115px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Enrolled</th>
+                      <th className="py-3 px-3.5 text-center min-w-[110px] 2xl:min-w-[130px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Status</th>
+                      <th className="py-3 px-3.5 text-center min-w-[210px] 2xl:min-w-[230px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-hairline text-xs">
+                  <tbody className="divide-y divide-hairline text-[13px]">
                     {members.map((member) => (
                       <tr key={member._id} className="hover:bg-surface-soft/60 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
+                        <td className="py-3 px-3 min-w-[170px] 2xl:min-w-[210px]">
+                          <div className="flex items-center gap-2.5">
                             {member.photoUrl ? (
                               <img
                                 src={member.photoUrl}
                                 alt={member.fullName}
-                                className="w-9 h-9 rounded-full object-cover border border-hairline shadow-sm"
+                                className="w-9 h-9 rounded-full object-cover border border-hairline shadow-2xs flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-9 h-9 rounded-full bg-surface-soft border border-hairline flex items-center justify-center font-bold text-[#FF6200]">
+                              <div className="w-9 h-9 rounded-full bg-surface-soft border border-hairline flex items-center justify-center font-bold text-[#FF6200] text-xs flex-shrink-0">
                                 {member.fullName.charAt(0)}
                               </div>
                             )}
-                            <div>
-                              <div className="font-bold text-ink font-sans text-sm">{member.fullName}</div>
-                              <div className="text-[11px] text-muted-editorial">{member.profession || "Volunteer"}</div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-ink font-sans text-[13px] leading-tight truncate">{member.fullName}</div>
+                              <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.profession || "Volunteer"}</div>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 font-mono font-semibold text-ink text-[11px]">
-                          <span className="bg-surface-soft px-2 py-1 rounded border border-hairline">
+                        <td className="py-3 px-2 font-mono font-semibold text-ink text-[12px] whitespace-nowrap min-w-[145px] 2xl:min-w-[180px]" style={{ whiteSpace: "nowrap" }}>
+                          <span className="bg-surface-soft px-2 py-1 rounded border border-hairline whitespace-nowrap">
                             {member.registrationId}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4">
-                          <div className="font-medium text-ink">{member.state}</div>
-                          <div className="text-[11px] text-muted-editorial">{member.district}</div>
+                        <td className="py-3 px-2 min-w-[140px] 2xl:min-w-[175px]">
+                          <div className="font-medium text-ink text-[13px] leading-tight truncate">{member.state}</div>
+                          <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.district}</div>
                         </td>
 
-                        <td className="py-3.5 px-4">
-                          <span className="badge-coral-fill text-[10px] whitespace-nowrap">
+                        <td className="py-3 px-2 min-w-[135px] 2xl:min-w-[170px]">
+                          <span className="badge-coral-fill text-[10.5px] px-2 py-1 inline-block">
                             {member.wing}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4">
-                          <div className="font-mono text-ink text-[11px]">{member.mobile}</div>
-                          <div className="text-[11px] text-muted-editorial truncate max-w-[140px]">
+                        <td className="py-3 px-2 min-w-[145px] 2xl:min-w-[175px]">
+                          <div className="font-mono text-ink text-[12px] leading-tight truncate">{member.mobile}</div>
+                          <div className="text-[11px] text-muted-editorial truncate max-w-[145px] leading-tight">
                             {member.email || "—"}
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-muted-editorial whitespace-nowrap">
+                        <td className="py-3 px-2 text-muted-editorial whitespace-nowrap text-[12px] min-w-[95px] 2xl:min-w-[115px]" style={{ whiteSpace: "nowrap" }}>
                           {new Date(member.createdAt).toLocaleDateString("en-IN", {
                             day: "2-digit",
                             month: "short",
@@ -1063,46 +1133,80 @@ const Admin = () => {
                           })}
                         </td>
 
-                        {/* Status Badge - Centered under Status Header */}
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <div className="inline-flex justify-center">
+                        {/* Status Badge */}
+                        <td className="py-3 px-3.5 text-center whitespace-nowrap min-w-[110px] 2xl:min-w-[130px]" style={{ whiteSpace: "nowrap" }}>
+                          <div className="inline-flex justify-center whitespace-nowrap">
                             {member.status === "APPROVED" ? (
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full shadow-2xs">
-                                <CheckCircle2 size={12} /> Approved
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+                                <CheckCircle2 size={12} className="shrink-0" /> Approved
                               </span>
                             ) : member.status === "REJECTED" ? (
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full shadow-2xs">
-                                <XCircle size={12} /> Rejected
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+                                <XCircle size={12} className="shrink-0" /> Rejected
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full shadow-2xs">
-                                <Clock size={12} /> Pending
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+                                <Clock size={12} className="shrink-0" /> Pending
                               </span>
                             )}
                           </div>
                         </td>
 
-                        {/* Member Actions: Review Dossier & Delete - Centered under Actions Header */}
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                        {/* Member Actions: Review Dossier, Call, WhatsApp & Delete */}
+                        <td className="py-3 px-3.5 text-center whitespace-nowrap min-w-[210px] 2xl:min-w-[230px]" style={{ whiteSpace: "nowrap" }}>
+                          <div
+                            className="flex items-center justify-center gap-2 flex-nowrap"
+                            style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "nowrap" }}
+                          >
                             <button
                               onClick={() => handleOpenMember(member)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 h-8.5 rounded-lg bg-[#FF6200] hover:bg-[#D65000] text-white font-medium text-xs shadow-xs hover:shadow transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-[0.98]"
-                              title="Review Member Dossier & Official ID Card"
+                              className="flex-shrink-0 shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-md bg-[#FF6200] hover:bg-[#D65000] text-white font-semibold text-xs shadow-2xs hover:shadow-xs transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-[0.98]"
+                              style={{ flexShrink: 0 }}
+                              title="Review & Verify Member Details & ID Card"
                             >
-                              <Eye size={13} />
-                              <span>Review Dossier</span>
+                              <ShieldCheck size={13} className="shrink-0" />
+                              <span>Review</span>
                             </button>
+
+                            {member.mobile && (
+                              <a
+                                href={`tel:+91${member.mobile.replace(/\D/g, "")}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-600 text-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                                style={{ flexShrink: 0 }}
+                                title={`Direct Call: ${member.fullName} (+91 ${member.mobile})`}
+                                aria-label="Call Member"
+                              >
+                                <Phone size={13} className="shrink-0" />
+                              </a>
+                            )}
+
+                            {(member.whatsapp || member.mobile) && (
+                              <a
+                                href={getMemberWhatsAppUrl(member)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                                style={{ flexShrink: 0 }}
+                                title={`WhatsApp Chat: ${member.fullName}`}
+                                aria-label="WhatsApp Member"
+                              >
+                                <WhatsAppIcon size={13} />
+                              </a>
+                            )}
 
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteMember(member);
                               }}
-                              className="inline-flex items-center justify-center w-8.5 h-8.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer flex-shrink-0 active:scale-[0.98]"
+                              className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                              style={{ flexShrink: 0 }}
                               title="Permanently Delete Member Record"
+                              aria-label="Delete Member"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={13} className="shrink-0" />
                             </button>
                           </div>
                         </td>
@@ -1126,7 +1230,7 @@ const Admin = () => {
           }}
         >
           <div
-            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-5xl w-full flex flex-col h-[88vh] max-h-[850px] min-h-[480px] overflow-hidden"
+            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-6xl xl:max-w-7xl w-full flex flex-col h-[92vh] max-h-[920px] min-h-[500px] overflow-hidden"
             onWheel={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1137,7 +1241,7 @@ const Admin = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-serif text-lg font-bold text-ink">Official Member Dossier</h3>
+                    <h3 className="font-serif text-lg font-bold text-ink">Official Member Verification</h3>
                     <span className="font-mono text-xs font-semibold text-[#FF6200] bg-white px-2 py-0.5 rounded border border-hairline">
                       {selectedMember.registrationId}
                     </span>
@@ -1159,8 +1263,8 @@ const Admin = () => {
                         : "text-muted-editorial hover:text-ink hover:bg-surface-soft"
                     }`}
                   >
-                    <FileText size={13} />
-                    <span>Dossier Details</span>
+                    <ShieldCheck size={13} />
+                    <span>Review & Verify</span>
                   </button>
                   <button
                     onClick={() => setDossierTab("card")}
@@ -1191,240 +1295,420 @@ const Admin = () => {
               className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar overscroll-contain space-y-6 focus:outline-none"
             >
               {dossierTab === "dossier" ? (
-                <>
-                  {/* Top Cadre Profile Banner */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-r from-surface-soft/80 via-white to-surface-soft/60 border border-hairline flex flex-col md:flex-row items-center md:items-start gap-5 shadow-2xs">
-                    {/* Photo with status ring */}
-                    <div className="relative flex-shrink-0">
-                      {selectedMember.photoUrl ? (
-                        <img
-                          src={selectedMember.photoUrl}
-                          alt={selectedMember.fullName}
-                          className="w-24 h-28 rounded-xl object-cover border-2 border-hairline shadow-md"
-                        />
-                      ) : (
-                        <div className="w-24 h-28 rounded-xl bg-surface-card border border-hairline flex flex-col items-center justify-center text-muted-editorial">
-                          <User size={36} className="text-[#FF6200]" />
-                          <span className="text-[10px] font-mono mt-1">No Photo</span>
+                <div className="space-y-4">
+                  {/* Cadre Verification Summary Card */}
+                  <div className="bg-surface-soft/80 border border-hairline rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+                    {/* Header Ribbon */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-hairline">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#FF6200]/10 flex items-center justify-center text-[#FF6200] flex-shrink-0">
+                          <FileText size={18} />
                         </div>
-                      )}
-                      {selectedMember.status === "APPROVED" && (
-                        <div className="absolute -bottom-1 -right-1 bg-emerald-600 text-white rounded-full p-1 shadow-sm" title="Approved Cadre Member">
-                          <CheckCircle2 size={15} />
+                        <div>
+                          <span className="font-serif font-bold text-sm sm:text-base text-ink block leading-tight">
+                            Cadre Verification Dossier
+                          </span>
+                          <span className="text-[11px] text-muted-editorial">
+                            Complete official registration profile & audit records
+                          </span>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Basic Info & Badges */}
-                    <div className="flex-1 text-center md:text-left space-y-2">
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
-                        <h2 className="font-serif text-2xl font-bold text-ink tracking-tight">
-                          {selectedMember.fullName}
-                        </h2>
-                        <span className="badge-coral-fill text-xs font-semibold px-2.5 py-0.5">
-                          {selectedMember.wing}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-hairline shadow-2xs">
+                          <span className="text-[10px] uppercase font-bold text-muted-editorial">ID:</span>
+                          <span className="font-mono text-xs font-bold text-ink">
+                            {selectedMember.registrationId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyRegistrationId(selectedMember.registrationId)}
+                            className="text-[#FF6200] hover:text-[#d95300] ml-1 cursor-pointer transition-colors"
+                            title="Copy Registration ID"
+                          >
+                            {copiedId ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
+                        </div>
+
                         {selectedMember.status === "APPROVED" ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full">
                             <CheckCircle2 size={12} /> Approved Cadre
                           </span>
                         ) : selectedMember.status === "REJECTED" ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-800 bg-rose-100 border border-rose-300 px-2.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-800 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-full">
                             <XCircle size={12} /> Application Rejected
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-full">
                             <Clock size={12} /> Pending Review
                           </span>
                         )}
-                      </div>
 
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs">
-                        <span className="text-muted-editorial font-medium">Registration ID:</span>
-                        <span className="font-mono font-bold text-ink bg-surface-soft px-2 py-0.5 rounded border border-hairline">
-                          {selectedMember.registrationId}
-                        </span>
+                        {/* Modal Header Quick Action Buttons: Call, WhatsApp, Delete */}
+                        {selectedMember.mobile && (
+                          <a
+                            href={`tel:+91${selectedMember.mobile.replace(/\D/g, "")}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 text-xs font-semibold transition-all shadow-2xs"
+                            title={`Call +91 ${selectedMember.mobile}`}
+                          >
+                            <Phone size={12} />
+                            <span>Call</span>
+                          </a>
+                        )}
+
+                        {(selectedMember.whatsapp || selectedMember.mobile) && (
+                          <a
+                            href={getMemberWhatsAppUrl(selectedMember)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 text-xs font-semibold transition-all shadow-2xs"
+                            title={`WhatsApp ${selectedMember.fullName}`}
+                          >
+                            <WhatsAppIcon size={12} />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+
                         <button
-                          onClick={() => handleCopyRegistrationId(selectedMember.registrationId)}
-                          className="text-[11px] text-[#FF6200] hover:underline flex items-center gap-1 cursor-pointer font-medium"
-                          title="Copy Registration ID"
+                          onClick={() => handleDeleteMember(selectedMember)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                          title="Permanently Delete Member Record"
                         >
-                          {copiedId ? (
-                            <>
-                              <Check size={11} className="text-emerald-600" />
-                              <span className="text-emerald-600">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={11} />
-                              <span>Copy ID</span>
-                            </>
-                          )}
+                          <Trash2 size={12} />
+                          <span>Delete</span>
                         </button>
                       </div>
-
-                      {/* Quick Contact & Location Ribbon */}
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-1.5 text-xs text-muted-editorial pt-1 border-t border-hairline/60">
-                        <span className="flex items-center gap-1.5 text-body">
-                          <MapPin size={13} className="text-[#FF6200]" />
-                          <span>{selectedMember.district}, {selectedMember.state}</span>
-                        </span>
-                        <span className="flex items-center gap-1.5 text-body font-mono">
-                          <Phone size={13} className="text-[#FF6200]" />
-                          <span>{selectedMember.mobile}</span>
-                        </span>
-                        <span className="flex items-center gap-1.5 text-rose-600 font-semibold">
-                          <Droplet size={13} className="text-rose-500" />
-                          <span>Blood: {selectedMember.bloodGroup}</span>
-                        </span>
-                        {selectedMember.email && (
-                          <span className="flex items-center gap-1.5 text-muted-editorial">
-                            <Mail size={13} className="text-[#FF6200]" />
-                            <span>{selectedMember.email}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4 Structured Information Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Card 1: Personal & Demographic Info */}
-                    <div className="bg-surface-soft/40 p-4 rounded-xl border border-hairline space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-hairline text-ink font-semibold text-xs">
-                        <User size={14} className="text-[#FF6200]" />
-                        <span>Personal Demographics</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Father / Spouse
-                          </span>
-                          <span className="font-medium text-ink">{selectedMember.fatherName}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Date of Birth
-                          </span>
-                          <span className="font-medium text-ink">{selectedMember.dob}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Gender
-                          </span>
-                          <span className="font-medium text-ink">{selectedMember.gender}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Blood Group
-                          </span>
-                          <span className="font-semibold text-rose-600">{selectedMember.bloodGroup}</span>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Card 2: Cadre Role & Service Commitment */}
-                    <div className="bg-surface-soft/40 p-4 rounded-xl border border-hairline space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-hairline text-ink font-semibold text-xs">
-                        <Briefcase size={14} className="text-[#FF6200]" />
-                        <span>Cadre Role & Engagement</span>
+                    {/* SECTION 1: Personal & Contact Profile (with Passport Photo) */}
+                    <div className="bg-white rounded-xl p-4 sm:p-5 border border-hairline shadow-2xs">
+                      <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-hairline/60">
+                        <div className="flex items-center gap-2">
+                          <User size={15} className="text-[#FF6200]" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink font-serif">
+                            1. Personal & Contact Profile
+                          </span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Assigned Wing
+
+                      <div className="flex flex-col sm:flex-row gap-5 items-start">
+                        {/* Cadre Passport Photo Preview */}
+                        <div className="flex-shrink-0 self-center sm:self-start flex flex-col items-center">
+                          {selectedMember.photoUrl ? (
+                            <img
+                              src={selectedMember.photoUrl}
+                              alt={selectedMember.fullName}
+                              className="w-24 h-28 sm:w-28 sm:h-32 rounded-xl object-cover border-2 border-[#FF6200] shadow-sm bg-white"
+                            />
+                          ) : (
+                            <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-xl bg-surface-card border-2 border-dashed border-hairline flex flex-col items-center justify-center text-muted-editorial text-center p-2">
+                              <User size={28} className="text-muted-editorial/60" />
+                              <span className="text-[9px] mt-1 font-medium text-rose-500">No Photo</span>
+                            </div>
+                          )}
+                          <span className="text-[9px] font-semibold text-muted-editorial mt-1.5 uppercase tracking-wider">
+                            Cadre Photo
                           </span>
-                          <span className="font-semibold text-[#FF6200]">{selectedMember.wing}</span>
                         </div>
-                        <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Time Commitment
+
+                        {/* Personal Details Grid */}
+                        <div className="flex-1 w-full grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3.5 text-xs">
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Full Legal Name
+                            </span>
+                            <span className="font-bold text-ink text-sm sm:text-base leading-tight block">
+                              {selectedMember.fullName}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Father / Husband Name
+                            </span>
+                            <span className="font-semibold text-ink text-xs sm:text-sm block">
+                              {selectedMember.fatherName}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Date of Birth & Age
+                            </span>
+                            <span className="font-semibold text-ink text-xs sm:text-sm block">
+                              {formatDobDisplay(selectedMember.dob)}
+                              {selectedMember.age ? ` (${selectedMember.age} Yrs)` : ""}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Gender
+                            </span>
+                            <span className="font-semibold text-ink text-xs sm:text-sm block">
+                              {selectedMember.gender}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Blood Group
+                            </span>
+                            {selectedMember.bloodGroup && selectedMember.bloodGroup !== "Not Specified" ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                {selectedMember.bloodGroup}
+                              </span>
+                            ) : (
+                              <span className="text-muted-editorial text-xs sm:text-sm">Not Specified</span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Primary Mobile
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono font-bold text-ink text-xs sm:text-sm block">
+                                +91 {selectedMember.mobile}
+                              </span>
+                              <a
+                                href={`tel:+91${selectedMember.mobile.replace(/\D/g, "")}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 text-[10px] font-semibold transition-all shadow-2xs"
+                                title={`Call +91 ${selectedMember.mobile}`}
+                              >
+                                <Phone size={10} />
+                                <span>Call</span>
+                              </a>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              WhatsApp Number
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-medium text-ink text-xs sm:text-sm block">
+                                {selectedMember.whatsapp && selectedMember.whatsapp.trim() ? (
+                                  selectedMember.whatsapp.trim() === selectedMember.mobile ? (
+                                    <span className="text-muted-editorial">Same as Mobile</span>
+                                  ) : (
+                                    <span className="font-mono font-bold text-ink">+91 {selectedMember.whatsapp.trim()}</span>
+                                  )
+                                ) : (
+                                  <span className="text-muted-editorial italic">Not Provided</span>
+                                )}
+                              </span>
+                              {(selectedMember.whatsapp || selectedMember.mobile) && (
+                                <a
+                                  href={getMemberWhatsAppUrl(selectedMember)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 text-[10px] font-semibold transition-all shadow-2xs"
+                                  title={`WhatsApp ${selectedMember.fullName}`}
+                                >
+                                  <WhatsAppIcon size={11} />
+                                  <span>WhatsApp</span>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                              Email Address
+                            </span>
+                            <span className="font-medium text-ink text-xs sm:text-sm block break-all">
+                              {selectedMember.email || <span className="text-muted-editorial italic">Not Provided</span>}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: Address & Location Jurisdiction */}
+                    <div className="bg-white rounded-xl p-4 sm:p-5 border border-hairline shadow-2xs space-y-3.5">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-hairline/60">
+                        <div className="flex items-center gap-2">
+                          <MapPin size={15} className="text-[#FF6200]" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink font-serif">
+                            2. Address & Location Jurisdiction
                           </span>
-                          <span className="font-medium text-ink">{selectedMember.hoursAvailable || "Active volunteer"}</span>
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3.5 text-xs">
                         <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Current Profession
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            State Unit
                           </span>
-                          <span className="font-medium text-ink">{selectedMember.profession || "Volunteer"}</span>
+                          <span className="font-bold text-ink text-sm sm:text-base block leading-snug">
+                            {selectedMember.state}
+                          </span>
                         </div>
+
                         <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            District Unit
+                          </span>
+                          <span className="font-bold text-ink text-sm sm:text-base block leading-snug">
+                            {selectedMember.district}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Taluk / Tehsil / Area
+                          </span>
+                          <span className="font-semibold text-ink text-xs sm:text-sm block leading-snug">
+                            {selectedMember.taluk?.trim() || "—"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Postal PIN Code
+                          </span>
+                          <span className="font-mono font-bold text-ink text-sm block">
+                            {selectedMember.pincode}
+                          </span>
+                        </div>
+
+                        <div className="col-span-2 sm:col-span-4 pt-3 border-t border-hairline/60">
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Full Residential Address
+                          </span>
+                          <span className="font-medium text-ink text-xs sm:text-sm block leading-relaxed">
+                            {selectedMember.address}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: Cadre Wing & Professional Details */}
+                    <div className="bg-white rounded-xl p-4 sm:p-5 border border-hairline shadow-2xs space-y-3.5">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-hairline/60">
+                        <div className="flex items-center gap-2">
+                          <Briefcase size={15} className="text-[#FF6200]" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink font-serif">
+                            3. Cadre Wing & Professional Details
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3.5 text-xs">
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Assigned MSD Wing
+                          </span>
+                          <span className="font-serif font-black text-[#FF6200] text-sm sm:text-base block">
+                            {selectedMember.wing}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Current Profession / Occupation
+                          </span>
+                          <span className="font-semibold text-ink text-xs sm:text-sm block">
+                            {selectedMember.profession?.trim() || "Volunteer / Social Worker"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
                             Highest Qualification
                           </span>
-                          <span className="font-medium text-ink">{selectedMember.qualification || "Not specified"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card 3: Identification & KYC Proof */}
-                    <div className="bg-surface-soft/40 p-4 rounded-xl border border-hairline space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-hairline text-ink font-semibold text-xs">
-                        <ShieldCheck size={14} className="text-[#FF6200]" />
-                        <span>Identity Proof & Verification</span>
-                      </div>
-                      <div className="space-y-2.5 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-editorial">Government ID Type:</span>
-                          <span className="font-semibold text-ink">{selectedMember.idProofType || "Government ID"}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-editorial">ID Proof Number:</span>
-                          <span className="font-mono font-semibold text-ink bg-white px-2 py-0.5 rounded border border-hairline">
-                            {selectedMember.idProofNumber || "Verified"}
+                          <span className="font-semibold text-ink text-xs sm:text-sm block">
+                            {selectedMember.qualification?.trim() || "Graduate / Equivalent"}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between pt-1 border-t border-hairline/60">
-                          <span className="text-muted-editorial">Online Verification:</span>
-                          <a
-                            href={`https://mahasevadal.com/verify?id=${selectedMember.registrationId}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#FF6200] hover:underline font-mono text-[11px] flex items-center gap-1 font-semibold"
-                          >
-                            <span>mahasevadal.com</span>
-                            <ExternalLink size={10} />
-                          </a>
-                        </div>
                       </div>
                     </div>
 
-                    {/* Card 4: Contact & Residential Location */}
-                    <div className="bg-surface-soft/40 p-4 rounded-xl border border-hairline space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-hairline text-ink font-semibold text-xs">
-                        <MapPin size={14} className="text-[#FF6200]" />
-                        <span>Residential & Postal Details</span>
+                    {/* SECTION 4: Registration, Pledge & Audit Details */}
+                    <div className="bg-white rounded-xl p-4 sm:p-5 border border-hairline shadow-2xs space-y-3.5">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-hairline/60">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={15} className="text-[#FF6200]" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink font-serif">
+                            4. Registration & Audit Details
+                          </span>
+                        </div>
                       </div>
-                      <div className="space-y-2 text-xs">
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3.5 text-xs">
                         <div>
-                          <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                            Full Street Address
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Cadre Registry ID
                           </span>
-                          <span className="font-medium text-ink">{selectedMember.address}</span>
+                          <span className="font-mono font-bold text-ink text-sm sm:text-base block">
+                            {selectedMember.registrationId}
+                          </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 pt-1 border-t border-hairline/60">
-                          <div>
-                            <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                              District & State
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Application Date
+                          </span>
+                          <span className="font-semibold text-ink text-xs sm:text-sm block">
+                            {selectedMember.createdAt
+                              ? new Date(selectedMember.createdAt).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "—"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            Approval Date & Status
+                          </span>
+                          {selectedMember.status === "APPROVED" ? (
+                            <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                              <CheckCircle2 size={13} className="text-emerald-600" />
+                              <span>
+                                {selectedMember.approvedAt
+                                  ? new Date(selectedMember.approvedAt).toLocaleDateString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "Approved"}
+                              </span>
                             </span>
-                            <span className="font-medium text-ink">{selectedMember.district}, {selectedMember.state}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-muted-editorial block font-semibold uppercase tracking-wider">
-                              PIN Code
+                          ) : selectedMember.status === "REJECTED" ? (
+                            <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
+                              <XCircle size={13} className="text-rose-600" />
+                              <span>Rejected</span>
                             </span>
-                            <span className="font-mono font-medium text-ink">{selectedMember.pincode}</span>
-                          </div>
+                          ) : (
+                            <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                              <Clock size={13} className="text-amber-600" />
+                              <span>Pending Review</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
+                            1947 Seva Pledge
+                          </span>
+                          <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                            <CheckCircle2 size={13} className="text-emerald-600" />
+                            <span>Accepted</span>
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
                 /* TAB 2: OFFICIAL PVC ID CARD & PDF DOWNLOAD CENTER */
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* Left Column (Card Preview) */}
-                  <div className="lg:col-span-6 flex flex-col items-center">
+                  <div className="lg:col-span-6 flex flex-col items-center w-full min-w-0">
                     <div className="w-full flex items-center justify-between pb-2 mb-2 border-b border-hairline">
                       <span className="text-xs font-bold text-ink uppercase tracking-wider">
                         Official PVC Identity Card
@@ -1442,6 +1726,9 @@ const Admin = () => {
                       signatoryName={cardSettings.signatoryName}
                       signatoryTitle={cardSettings.signatoryTitle}
                       hideActionButtons={true}
+                      stacked={true}
+                      showViewToggle={true}
+                      defaultView="front"
                     />
                   </div>
 
@@ -1503,10 +1790,10 @@ const Admin = () => {
                           </div>
                           <div>
                             <div className="font-semibold text-xs text-white group-hover:underline">
-                              Download ID Card (PDF)
+                              Download ID Card (PDF - Both Sides)
                             </div>
                             <div className="text-[10px] text-blue-200">
-                              A4 Printable Certificate with Verification Notice & Crop Lines
+                              1-Page Official Print Certificate with Front & Back Sides Side-by-Side & Crop Lines
                             </div>
                           </div>
                         </div>
@@ -1517,7 +1804,7 @@ const Admin = () => {
 
                       {/* Download PNG Button */}
                       <button
-                        onClick={() => handleDownloadPng(selectedMember)}
+                        onClick={() => handleDownloadPng(selectedMember, "both")}
                         disabled={downloadingPdf || downloadingPng}
                         className="w-full btn-primary-coral p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer text-left group"
                       >
@@ -1527,10 +1814,10 @@ const Admin = () => {
                           </div>
                           <div>
                             <div className="font-semibold text-xs text-white group-hover:underline">
-                              Download Digital Card (PNG)
+                              Download ID Card (PNG - Both Sides)
                             </div>
                             <div className="text-[10px] text-white/80">
-                              Ultra-crisp 800×1200 PVC graphic for mobile or plastic card printers
+                              Ultra-crisp print sheet with Front and Back sides side-by-side
                             </div>
                           </div>
                         </div>
@@ -1538,6 +1825,28 @@ const Admin = () => {
                           {downloadingPng ? "Rendering..." : "PNG →"}
                         </span>
                       </button>
+
+                      {/* Direct Single Side PNG Links */}
+                      <div className="flex items-center justify-center gap-3 text-[11px] text-muted-editorial pt-1 border-t border-hairline/60">
+                        <span>Single Side PNG:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPng(selectedMember, "front")}
+                          disabled={downloadingPdf || downloadingPng}
+                          className="text-[#FF6200] hover:underline font-semibold cursor-pointer"
+                        >
+                          Front Side
+                        </button>
+                        <span className="text-muted-editorial/40">•</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPng(selectedMember, "back")}
+                          disabled={downloadingPdf || downloadingPng}
+                          className="text-[#FF6200] hover:underline font-semibold cursor-pointer"
+                        >
+                          Back Side
+                        </button>
+                      </div>
                     </div>
 
                     {/* Seal & Signatory Settings Quick Box */}

@@ -135,7 +135,7 @@ const Header = () => {
       {/* Editorial Top Contact Bar */}
       <div className="hidden lg:flex justify-between items-center px-8 py-1.5 bg-surface-soft border-b border-hairline text-xs text-muted-editorial">
         <div className="flex items-center gap-2">
-          <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-4 h-4 rounded-full object-cover" />
+          <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-4 h-4 rounded-full object-contain" />
           <span className="font-serif italic text-ink font-semibold">Maha Seva Dal</span>
           <span className="text-muted-soft">| Est. 1947 — Unity, Service & Empowerment</span>
         </div>
@@ -156,8 +156,8 @@ const Header = () => {
 
         {/* Brand Logo & Wordmark — Cloudinary CDN Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-[#FF6200]/40 flex items-center justify-center group-hover:border-[#FF6200] transition-colors flex-shrink-0 bg-surface-card shadow-sm">
-            <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
+            <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
           </div>
           <div className="flex flex-col">
             <span className="font-serif text-lg font-semibold text-ink tracking-tight group-hover:text-[#FF6200] transition-colors leading-none" title="'महा सेवा दल">
@@ -327,9 +327,9 @@ const Header = () => {
           <div className="flex items-center justify-between px-5 py-3 border-b border-hairline bg-canvas">
             <div className="flex items-center gap-2.5">
               <img
-                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1785928702/msd/brand/logo.png"
+                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
                 alt="Maha Seva Dal Logo"
-                className="w-8 h-8 rounded-full object-cover border border-hairline"
+                className="w-8 h-8 rounded-full object-contain"
               />
               <div>
                 <div className="font-serif font-bold text-sm text-ink leading-tight">Maha Seva Dal</div>

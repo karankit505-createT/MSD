@@ -43,7 +43,7 @@ const Home = () => {
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-ink tracking-tight font-normal leading-[1.1]">
                 Unity of People, Development of Society & Power of Youth
               </h1>
-
+ 
               {/* Sub-headline / Lead text */}
               <p className="text-base text-body leading-relaxed max-w-xl font-sans">
                 Founded in 1947 by Saragabani Gopu during India's independence, Maha Seva Dal (MSD) has stood as a dedicated pillar for social harmony, cultural preservation, and nation-building across India.
@@ -56,7 +56,7 @@ const Home = () => {
                   <ArrowRight size={16} />
                 </Link>
                 <Link to="/origins" className="btn-secondary-cream">
-                  <span>Read 1947 Origins</span>
+                  <span>Read 1947 Origins</span> 
                 </Link>
               </div>
 

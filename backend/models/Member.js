@@ -12,6 +12,7 @@ const memberSchema = new mongoose.Schema(
     fullName: { type: String, required: true, trim: true },
     fatherName: { type: String, required: true, trim: true },
     dob: { type: String, required: true },
+    age: { type: Number },
     gender: { type: String, required: true, enum: ["Male", "Female", "Other"] },
     mobile: { type: String, required: true, trim: true },
     whatsapp: { type: String, trim: true },

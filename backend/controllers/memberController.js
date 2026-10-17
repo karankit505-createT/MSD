@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Member = require("../models/Member");
 const cloudinary = require("../config/cloudinary");
 const jwt = require("jsonwebtoken");
@@ -28,29 +29,57 @@ setTimeout(() => {
   syncToLocalBackupFile().catch(() => {});
 }, 3000);
 
-// State Code Mapping Helper
+// State Code Mapping Helper (All 28 States & 8 Union Territories)
 const getStateCode = (stateName) => {
   if (!stateName) return "IN";
   const map = {
+    "Andaman and Nicobar Islands": "AN",
+    "Andhra Pradesh": "AP",
+    "Arunachal Pradesh": "AR",
+    Assam: "AS",
+    Bihar: "BR",
+    Chandigarh: "CH",
+    Chhattisgarh: "CG",
+    "Dadra and Nagar Haveli and Daman and Diu": "DD",
+    Delhi: "DL",
+    Goa: "GA",
+    Gujarat: "GJ",
+    Haryana: "HR",
+    "Himachal Pradesh": "HP",
+    "Jammu and Kashmir": "JK",
+    Jharkhand: "JH",
     Karnataka: "KA",
+    Kerala: "KL",
+    Ladakh: "LA",
+    Lakshadweep: "LD",
+    "Madhya Pradesh": "MP",
+    Maharashtra: "MH",
+    Manipur: "MN",
+    Meghalaya: "ML",
+    Mizoram: "MZ",
+    Nagaland: "NL",
+    Odisha: "OD",
+    Puducherry: "PY",
+    Punjab: "PB",
+    Rajasthan: "RJ",
+    Sikkim: "SK",
     "Tamil Nadu": "TN",
     Telangana: "TS",
-    "Andhra Pradesh": "AP",
-    Jharkhand: "JH",
-    Maharashtra: "MH",
-    Kerala: "KL",
-    Delhi: "DL",
+    Tripura: "TR",
     "Uttar Pradesh": "UP",
-    Bihar: "BR",
-    Gujarat: "GJ",
-    Rajasthan: "RJ",
-    Punjab: "PB",
-    Haryana: "HR",
-    Odisha: "OD",
+    Uttarakhand: "UK",
     "West Bengal": "WB",
-    Assam: "AS",
   };
   return map[stateName] || stateName.slice(0, 2).toUpperCase();
+};
+
+// Helper: Convert string to clean Title Case for official identity documents
+const toTitleCase = (str) => {
+  if (!str || typeof str !== "string") return "";
+  const cleaned = str.trim().replace(/\s+/g, " ");
+  // If the string was submitted in all uppercase (e.g. "DEEPU KUMAR"), convert to lower then capitalize
+  const base = cleaned === cleaned.toUpperCase() ? cleaned.toLowerCase() : cleaned;
+  return base.replace(/(?:^|\s|[-/.,'#])([a-z\u00C0-\u024F])/g, (char) => char.toUpperCase());
 };
 
 // Generate Unique Registration ID (India / National Level Cadre)
@@ -75,6 +104,169 @@ const generateRegId = async () => {
 
   const serial = String(nextNum).padStart(4, "0");
   return `MSD-IND-${year}-${serial}`;
+};
+
+// ─── Registration Validation Helpers & Enums ────────────────────────────────
+const VALID_WINGS = [
+  "Legal Wing",
+  "Medical & Health Wing",
+  "Education & Child Welfare",
+  "Youth & Sports Wing",
+  "Community Seva & Mahaprasadam",
+  "General Seva Cadre",
+];
+
+const VALID_GENDERS = ["Male", "Female", "Other"];
+
+const VALID_BLOOD_GROUPS = [
+  "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Not Specified", ""
+];
+
+const calculateAgeFromDob = (dobStr) => {
+  if (!dobStr) return null;
+  const birth = new Date(dobStr);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const validateRegistrationData = (body, file) => {
+  const errors = {};
+
+  const fullName = (body.fullName || "").trim();
+  const fatherName = (body.fatherName || "").trim();
+  const dob = (body.dob || "").trim();
+  const gender = (body.gender || "").trim();
+  const mobile = (body.mobile || "").trim();
+  const whatsapp = (body.whatsapp || "").trim();
+  const email = (body.email || "").trim();
+  const bloodGroup = (body.bloodGroup || "").trim();
+  const state = (body.state || "").trim();
+  const district = (body.district || "").trim();
+  const address = (body.address || "").trim();
+  const pincode = (body.pincode || "").trim();
+  const wing = (body.wing || "").trim();
+  const pledgeAccepted = body.pledgeAccepted === true || body.pledgeAccepted === "true";
+
+  // Full Name
+  if (!fullName) {
+    errors.fullName = "Full Name is required.";
+  } else if (fullName.length < 3) {
+    errors.fullName = "Full Name must be at least 3 characters long.";
+  } else if (!/^[a-zA-Z\s.']{3,70}$/.test(fullName)) {
+    errors.fullName = "Full Name should contain only letters, dots, and spaces.";
+  }
+
+  // Father's / Husband's Name
+  if (!fatherName) {
+    errors.fatherName = "Father's / Husband's Name is required.";
+  } else if (fatherName.length < 3) {
+    errors.fatherName = "Father's / Husband's Name must be at least 3 characters long.";
+  } else if (!/^[a-zA-Z\s.']{3,70}$/.test(fatherName)) {
+    errors.fatherName = "Father's / Husband's Name should contain only letters, dots, and spaces.";
+  }
+
+  // Date of Birth & Age Eligibility
+  if (!dob) {
+    errors.dob = "Date of Birth is required.";
+  } else {
+    const age = calculateAgeFromDob(dob);
+    if (age === null) {
+      errors.dob = "Please enter a valid Date of Birth (YYYY-MM-DD).";
+    } else if (new Date(dob) > new Date()) {
+      errors.dob = "Date of Birth cannot be in the future.";
+    } else if (age < 12) {
+      errors.dob = "Cadre member must be at least 12 years of age to register.";
+    } else if (age > 115) {
+      errors.dob = "Please enter a realistic Date of Birth.";
+    }
+  }
+
+  // Gender
+  if (!gender || !VALID_GENDERS.includes(gender)) {
+    errors.gender = "Please select a valid Gender (Male, Female, or Other).";
+  }
+
+  // Primary Mobile (10 digits starting with 6, 7, 8, 9)
+  if (!mobile) {
+    errors.mobile = "Primary Mobile Number is required.";
+  } else if (!/^[6-9]\d{9}$/.test(mobile)) {
+    errors.mobile = "Mobile Number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.";
+  }
+
+  // WhatsApp (optional, but validated if provided)
+  if (whatsapp && !/^[6-9]\d{9}$/.test(whatsapp)) {
+    errors.whatsapp = "WhatsApp Number must be a valid 10-digit number.";
+  }
+
+  // Email (optional, but validated if provided)
+  if (email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+    errors.email = "Please enter a valid email address.";
+  }
+
+  // Blood Group
+  if (bloodGroup && !VALID_BLOOD_GROUPS.includes(bloodGroup)) {
+    errors.bloodGroup = "Invalid Blood Group option selected.";
+  }
+
+  // State
+  if (!state) {
+    errors.state = "State / Union Territory is required.";
+  }
+
+  // District
+  if (!district) {
+    errors.district = "District is required.";
+  } else if (district.length < 2) {
+    errors.district = "District name must be at least 2 characters.";
+  }
+
+  // Residential Address
+  if (!address) {
+    errors.address = "Residential Address is required.";
+  } else if (address.length < 8) {
+    errors.address = "Please provide complete address (at least 8 characters).";
+  }
+
+  // Postal PIN Code (6 digits starting with 1-9)
+  if (!pincode) {
+    errors.pincode = "Postal PIN Code is required.";
+  } else if (!/^[1-9][0-9]{5}$/.test(pincode)) {
+    errors.pincode = "PIN Code must be a valid 6-digit Indian postal code.";
+  }
+
+  // Primary Cadre Wing
+  if (!wing || !VALID_WINGS.includes(wing)) {
+    errors.wing = `Please choose a valid MSD Wing (${VALID_WINGS.join(", ")}).`;
+  }
+
+  // Seva Pledge
+  if (!pledgeAccepted) {
+    errors.pledgeAccepted = "You must accept the Maha Seva Dal 1947 Seva Pledge to complete registration.";
+  }
+
+  // Photo Validation (MANDATORY)
+  if (!file) {
+    errors.photo = "Passport size photograph is mandatory for cadre registration.";
+  } else {
+    const validMimes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+    if (!validMimes.includes(file.mimetype)) {
+      errors.photo = "Photograph must be a valid JPG, PNG, or WEBP image.";
+    } else if (file.size > 5 * 1024 * 1024) {
+      errors.photo = "Photograph file size must not exceed 5 MB.";
+    }
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+    firstError: Object.values(errors)[0] || null,
+  };
 };
 
 // ─── 1. Public Member Registration ──────────────────────────────────────────
@@ -103,8 +295,27 @@ const registerMember = async (req, res) => {
       pledgeAccepted,
     } = req.body;
 
-    if (!fullName || !fatherName || !dob || !gender || !mobile || !state || !district || !address || !pincode || !wing) {
-      return res.status(400).json({ error: "Please fill in all mandatory fields." });
+    // Run Server-side Data Validation
+    const validation = validateRegistrationData(req.body, req.file);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        error: validation.firstError,
+        errors: validation.errors,
+      });
+    }
+
+    // Check for existing active registration with the same mobile
+    const cleanMobile = mobile.trim();
+    const existingMember = await Member.findOne({
+      mobile: cleanMobile,
+      status: { $in: ["PENDING", "APPROVED"] },
+    });
+    if (existingMember) {
+      return res.status(409).json({
+        error: "This mobile number is already registered",
+        existingRegistrationId: existingMember.registrationId,
+        status: existingMember.status,
+      });
     }
 
     let photoUrl = "";
@@ -123,11 +334,21 @@ const registerMember = async (req, res) => {
 
     const registrationId = await generateRegId();
 
+    // Sanitize names and administrative text to official Title Case
+    const sanitizedFullName = toTitleCase(fullName);
+    const sanitizedFatherName = toTitleCase(fatherName);
+    const sanitizedDistrict = toTitleCase(district);
+    const sanitizedTaluk = taluk ? toTitleCase(taluk) : "";
+    const sanitizedProfession = profession ? toTitleCase(profession) : "";
+    const sanitizedAddress = toTitleCase(address);
+    const finalAge = calculateAgeFromDob(dob);
+
     const newMember = new Member({
       registrationId,
-      fullName,
-      fatherName,
+      fullName: sanitizedFullName,
+      fatherName: sanitizedFatherName,
       dob,
+      age: finalAge,
       gender,
       mobile,
       whatsapp: whatsapp || mobile,
@@ -136,12 +357,12 @@ const registerMember = async (req, res) => {
       photoUrl,
       photoPublicId,
       state,
-      district,
-      taluk: taluk || "",
-      address,
+      district: sanitizedDistrict,
+      taluk: sanitizedTaluk,
+      address: sanitizedAddress,
       pincode,
       qualification: qualification || "",
-      profession: profession || "",
+      profession: sanitizedProfession,
       wing,
       hoursAvailable: hoursAvailable || "5-10 hours/month",
       idProofType: idProofType || "Aadhaar Card",
@@ -274,7 +495,9 @@ const updateMemberStatus = async (req, res) => {
 const deleteMember = async (req, res) => {
   try {
     const { id } = req.params;
-    const member = await Member.findById(id);
+    const member = mongoose.isValidObjectId(id)
+      ? await Member.findById(id)
+      : await Member.findOne({ registrationId: id });
     if (!member) {
       return res.status(404).json({ error: "Member not found." });
     }
@@ -288,7 +511,7 @@ const deleteMember = async (req, res) => {
       }
     }
 
-    await Member.findByIdAndDelete(id);
+    await Member.findByIdAndDelete(member._id);
 
     // Sync to file
     await syncToLocalBackupFile();
@@ -361,12 +584,50 @@ const checkMemberStatus = async (req, res) => {
       return res.status(400).json({ error: "Please enter your Registration ID or 10-digit Mobile Number." });
     }
 
-    const member = await Member.findOne({
-      $or: [
-        { registrationId: { $regex: new RegExp(`^${rawQuery}$`, "i") } },
-        { mobile: rawQuery },
-      ],
-    });
+    // Normalize phone input if formatted with +91, leading 0, spaces, or hyphens
+    let cleanPhone = rawQuery.replace(/[\s\-\(\)]/g, "");
+    if (cleanPhone.startsWith("+91")) cleanPhone = cleanPhone.slice(3);
+    if (cleanPhone.startsWith("91") && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(2);
+    if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = cleanPhone.slice(1);
+
+    const isDigitsOnly = /^\d+$/.test(cleanPhone);
+    if (isDigitsOnly) {
+      if (cleanPhone.length !== 10) {
+        return res.status(400).json({
+          error: `Mobile number must be exactly 10 digits. Received ${cleanPhone.length} digits.`,
+        });
+      }
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        return res.status(400).json({
+          error: "Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.",
+        });
+      }
+    }
+
+    const safeRegexQuery = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let member = null;
+    try {
+      member = await Member.findOne({
+        $or: [
+          { registrationId: { $regex: new RegExp(`^${safeRegexQuery}$`, "i") } },
+          { mobile: isDigitsOnly ? cleanPhone : rawQuery },
+          { mobile: cleanPhone },
+        ],
+      });
+    } catch (dbErr) {
+      console.warn("MongoDB query failed, checking local backup JSON:", dbErr.message);
+      if (fs.existsSync(DATA_FILE_PATH)) {
+        try {
+          const localList = JSON.parse(fs.readFileSync(DATA_FILE_PATH, "utf8"));
+          const searchVal = isDigitsOnly ? cleanPhone : rawQuery.toLowerCase();
+          member = localList.find((m) => {
+            const mReg = (m.registrationId || "").toLowerCase();
+            const mMobile = (m.mobile || "").replace(/[\s\-\+]/g, "");
+            return mReg === searchVal || mMobile === searchVal || mMobile.endsWith(searchVal);
+          });
+        } catch (fErr) {}
+      }
+    }
 
     if (!member) {
       return res.status(404).json({
@@ -381,11 +642,19 @@ const checkMemberStatus = async (req, res) => {
         registrationId: member.registrationId,
         fullName: member.fullName,
         fatherName: member.fatherName,
+        dob: member.dob,
+        age: member.age,
+        gender: member.gender,
         mobile: member.mobile,
+        whatsapp: member.whatsapp,
+        email: member.email,
         bloodGroup: member.bloodGroup,
         photoUrl: member.photoUrl,
         state: member.state,
         district: member.district,
+        taluk: member.taluk,
+        address: member.address,
+        pincode: member.pincode,
         wing: member.wing,
         profession: member.profession,
         status: member.status,
@@ -453,7 +722,7 @@ const getCardSettings = async (req, res) => {
     res.status(500).json({ error: "Failed to load card settings." });
   }
 };
-
+ 
 const updateCardSettings = async (req, res) => {
   try {
     const { customSealUrl, customSignatureUrl, signatoryName, signatoryTitle } = req.body;
