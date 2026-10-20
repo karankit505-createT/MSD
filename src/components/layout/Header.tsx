@@ -152,10 +152,10 @@ const Header = () => {
       </div>
 
       {/* Main Top Nav Bar (Height 64px) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
         {/* Brand Logo & Wordmark — Cloudinary CDN Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
+        <Link to="/" className="flex items-center gap-3 group shrink-0">
           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
             <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
           </div>
@@ -170,19 +170,19 @@ const Header = () => {
         </Link>
 
         {/* Desktop Menu Navigation */}
-        <nav className="hidden lg:flex items-center gap-x-6 text-sm font-medium">
+        <nav className="hidden lg:flex items-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-6 text-[13px] xl:text-sm font-medium">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`transition-colors relative py-1 ${isActive ? "text-[#FF6200] font-semibold" : "text-body-main hover:text-[#FF6200]"
+                className={`whitespace-nowrap transition-colors relative py-1.5 ${isActive ? "text-[#FF6200] font-semibold" : "text-body-main hover:text-[#FF6200]"
                   }`}
               >
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FF6200] rounded-full" />
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF6200] rounded-full" />
                 )}
               </Link>
             );
@@ -192,12 +192,12 @@ const Header = () => {
           <li ref={eventsRef} className="list-none relative">
             <button
               onClick={() => setOpenEvents((v) => !v)}
-              className={`flex items-center gap-1 transition-colors py-1 ${isEventActive || location.pathname === "/events" || openEvents
+              className={`whitespace-nowrap flex items-center gap-1 transition-colors py-1.5 ${isEventActive || location.pathname === "/events" || openEvents
                 ? "text-[#FF6200] font-semibold"
                 : "text-body-main hover:text-[#FF6200]"
                 }`}
             >
-              Events
+              <span>Events</span>
               <ChevronDown size={14} className={`transition-transform duration-200 ${openEvents ? "rotate-180" : ""}`} />
             </button>
 
@@ -235,10 +235,10 @@ const Header = () => {
           <li ref={apptsRef} className="list-none relative">
             <button
               onClick={() => setOpenAppts((v) => !v)}
-              className={`flex items-center gap-1 transition-colors py-1 ${isApptActive || openAppts ? "text-[#FF6200] font-semibold" : "text-body-main hover:text-[#FF6200]"
+              className={`whitespace-nowrap flex items-center gap-1 transition-colors py-1.5 ${isApptActive || openAppts ? "text-[#FF6200] font-semibold" : "text-body-main hover:text-[#FF6200]"
                 }`}
             >
-              Appointments
+              <span>Appointments</span>
               <ChevronDown size={14} className={`transition-transform duration-200 ${openAppts ? "rotate-180" : ""}`} />
             </button>
 
@@ -297,12 +297,12 @@ const Header = () => {
         </nav>
 
         {/* Right CTA Button */}
-        <div className="hidden lg:flex items-center">
+        <div className="hidden lg:flex items-center shrink-0">
           <Link
             to="/support"
-            className="bg-[#FF6200] hover:bg-[#e05600] text-white text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-2 transition-all shadow-sm hover:shadow"
+            className="whitespace-nowrap bg-[#FF6200] hover:bg-[#e05600] text-white text-xs xl:text-sm font-semibold px-4 xl:px-5 py-2.5 rounded-full flex items-center gap-2 transition-all shadow-sm hover:shadow shrink-0"
           >
-            <Heart size={15} className="stroke-white fill-transparent" />
+            <Heart size={15} className="stroke-white fill-transparent shrink-0" />
             <span>Support & Donate</span>
           </Link>
         </div>

@@ -27,6 +27,185 @@ const Legacy = () => {
             </p>
           </div>
 
+          {/* Historic Leadership Succession */}
+          <div className="mb-12">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">Decades of Service</span>
+                <h3 className="font-serif text-2xl text-ink mt-1">Historic Presidents & National Leadership</h3>
+                <p className="text-xs text-muted-editorial mt-1">
+                  From its 1947 establishment to nationwide expansion, Maha Seva Dal was guided by dedicated visionary leaders.
+                </p>
+              </div>
+              <Link to="/leadership" className="btn-secondary-cream text-xs shrink-0 self-start sm:self-auto">
+                <span>View Full Presidents Archive</span>
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+              {/* Leader 1 */}
+              <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
+                <div>
+                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                    <img
+                      src="/presidents/president-1947.jpg"
+                      alt="Founder Sharagabani Gopu"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      1947 Proclamation
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">Founder & 1st President</div>
+                    <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
+                      Established foundational values: Service, Discipline, and Unity across grassroots youth assemblies.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
+                    <Link to="/leadership#gopu-1947" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
+                      <span>Biography</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                    <span className="text-muted-editorial">1947 Foundation</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leader 2 */}
+              <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
+                <div>
+                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                    <img
+                      src="/presidents/president-1949.jpg"
+                      alt="National President Sharagabani Gopu"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      1949 Era
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
+                    <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
+                      Codified the volunteer constitution, daily shakha routines, and continuous mass Annadanam.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
+                    <Link to="/leadership#gopu-1949" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
+                      <span>Biography</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                    <span className="text-muted-editorial">1949 Governance</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leader 3 (Narendra Singh) */}
+              <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
+                <div>
+                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                    <img
+                      src="/presidents/president-1961.jpg"
+                      alt="National President Narendra Singh"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      1961 Expansion
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
+                    <h4 className="font-serif text-base text-ink font-semibold">Narendra Singh</h4>
+                    <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
+                      Steered the 1961 expansion phase, strengthening cultural assemblies, student forums, and community seva.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
+                    <Link to="/leadership#narendra-1961" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
+                      <span>Biography</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                    <span className="text-muted-editorial">1961 Expansion</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leader 4 (Krishna Gowda) */}
+              <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
+                <div>
+                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                    <img
+                      src="/presidents/president-1986.jpg"
+                      alt="National President M. H. Krishna Gowda"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      1986 Era
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
+                    <h4 className="font-serif text-base text-ink font-semibold">M. H. Krishna Gowda</h4>
+                    <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
+                      Expanded nationwide volunteer brigades, formalized youth coordinator training, and spearheaded rural aid.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
+                    <Link to="/leadership#krishna-gowda-1986" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
+                      <span>Biography</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                    <span className="text-muted-editorial">1986 Leadership</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leader 5 (1997) */}
+              <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
+                <div>
+                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                    <img
+                      src="/presidents/president-1997.jpg"
+                      alt="National President 1997"
+                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      1997 Jubilee
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
+                    <h4 className="font-serif text-base text-ink font-semibold">National Leadership (1997)</h4>
+                    <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
+                      Led the 50-year Golden Jubilee celebrations uniting thousands of grassroots cadre members across India.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
+                    <Link to="/leadership#president-1997" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
+                      <span>Biography</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                    <span className="text-muted-editorial">1997 Golden Jubilee</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div className="tile-connector">
               <Network className="text-coral mb-3" size={20} />

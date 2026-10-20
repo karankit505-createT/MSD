@@ -1,13 +1,31 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Link } from "react-router-dom";
-import { Heart, Calendar, ArrowRight, ShieldCheck, Users, Flame, Landmark } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Heart, Calendar, ArrowRight, ShieldCheck, Users, Flame, Landmark, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
+import { PRESIDENTS, PresidentData } from "@/pages/Leadership";
 
 const UPI_LINK = "upi://pay?pa=MAB.037349044880004@AXISBANK&pn=Maha+Seva+Dal+Foundation&cu=INR";
 
 const Home = () => {
   const qrRef = useRef<HTMLCanvasElement>(null);
+  const [aboutPresident, setAboutPresident] = useState<PresidentData | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setAboutPresident(null);
+      }
+    };
+    if (aboutPresident) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "auto";
+    };
+  }, [aboutPresident]);
 
   useEffect(() => {
     if (qrRef.current) {
@@ -61,15 +79,17 @@ const Home = () => {
               </div>
 
               {/* Quick Stat Bar */}
-              <div className="pt-6 border-t border-hairline grid grid-cols-3 gap-4">
+              <div className="pt-6 border-t border-hairline grid grid-cols-3 gap-4 items-start">
                 <div>
                   <div className="font-serif text-xl text-ink">1947</div>
                   <div className="text-xs text-muted-editorial">Year Established</div>
                 </div>
-                <div>
-                  <div className="font-serif text-xl text-ink">Saragabani Gopu</div>
+                <Link to="/leadership" className="block group">
+                  <div className="font-serif text-xl text-ink leading-tight group-hover:text-[#FF6200] transition-colors">
+                    Saragabani Gopu
+                  </div>
                   <div className="text-xs text-muted-editorial">Founder</div>
-                </div>
+                </Link>
                 <div>
                   <div className="font-serif text-xl text-ink">Nationwide</div>
                   <div className="text-xs text-muted-editorial">Service Reach</div>
@@ -102,38 +122,183 @@ const Home = () => {
       </section>
 
       {/* ══════════════════════════════════════════
-          ABOUT SECTION — Cream Surface Soft (#f5f0e8)
+          FOUNDING LEADERSHIP & ABOUT SECTION
       ══════════════════════════════════════════ */}
-      <section className="py-20 bg-surface-soft border-b border-hairline">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left">
+      <section className="py-20 lg:py-24 bg-surface-soft border-b border-hairline">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="mb-4">
-            <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">About the Organisation</span>
-          </div>
-
-          <h2 className="text-3xl md:text-4xl font-serif text-ink mb-6">
-            A Heritage of Selfless Service and Cultural Preservation
-          </h2>
-
-          <div className="space-y-6 text-body text-base leading-relaxed font-sans">
-            <p>
-              Maha Seva Dal (MSD) emerged in 1947, during the defining moment of India's independence. Founded by Saragabani Gopu, the organization focused on organizing society, cultivating disciplined leadership, and assisting communities during times of historical transition.
-            </p>
-            <p>
-              Emphasizing social unity, cultural strength, and youth volunteerism, MSD has consistently stood for humanitarian service, organizing grand socio-cultural assemblies, food relief drives, and spiritual celebrations like Guru Poornima and Mahashivratri.
+          {/* Section Header */}
+          <div className="max-w-3xl mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FF6200]/10 border border-[#FF6200]/25 text-xs font-semibold text-[#FF6200] mb-3">
+              <Landmark size={14} />
+              <span>FOUNDING LEADERSHIP & 1947 HERITAGE</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-ink tracking-tight">
+              A Heritage of Selfless Service and Cultural Preservation
+            </h2>
+            <p className="mt-4 text-base text-body leading-relaxed">
+              Maha Seva Dal (MSD) emerged in 1947 during the historic moment of India's independence. Founded by <strong className="text-ink font-semibold">Saragabani Gopu</strong>, the organization directed its energy toward organizing society, cultivating disciplined youth leadership, and providing selfless humanitarian aid.
             </p>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-4 pt-4 border-t border-hairline">
-            <Link to="/origins" className="text-sm font-medium text-[#FF6200] hover:underline inline-flex items-center gap-1">
-              <span>Read the detailed history of 1947 origins</span>
-              <ArrowRight size={14} />
-            </Link>
-            <span className="text-hairline">|</span>
-            <Link to="/ideology" className="text-sm font-medium text-[#FF6200] hover:underline inline-flex items-center gap-1">
-              <span>Explore core principles & ideology</span>
-              <ArrowRight size={14} />
-            </Link>
+          {/* Featured Founder Spotlight Card */}
+          <div className="bg-canvas border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-md transition-shadow duration-300 mb-16">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+              
+              {/* Founder Image Column */}
+              <div className="lg:col-span-5 flex flex-col items-center">
+                <div className="w-full max-w-sm rounded-2xl overflow-hidden border-2 border-[#FF6200]/30 shadow-lg bg-surface-card">
+                  <img
+                    src="/founder-saragabani-gopu-1947.jpg"
+                    alt="Founder Saragabani Gopu - Maha Seva Dal 1947"
+                    className="w-full h-auto object-cover transition-transform duration-500 hover:scale-[1.02]"
+                  />
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-editorial">
+                  <span className="w-2 h-2 rounded-full bg-[#138808]" />
+                  <span>Historic 1947 Cadre Archive</span>
+                </div>
+              </div>
+
+              {/* Founder Editorial Content Column */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                <div>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">
+                    Founding Father & Visionary
+                  </span>
+                  <h3 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-ink mt-1">
+                    Saragabani Gopu
+                  </h3>
+                  <p className="text-xs text-muted-editorial mt-1">
+                    First National President · Architect of the 1947 Maha Seva Dal Movement
+                  </p>
+                </div>
+
+                {/* Founder Official Quote */}
+                <blockquote className="border-l-4 border-[#FF6200] pl-5 py-3 bg-surface-soft/80 rounded-r-xl italic font-serif text-base sm:text-lg text-ink leading-relaxed">
+                  "Long-term national stability depends upon a disciplined, compassionate, and culturally rooted social framework."
+                  <div className="mt-2 text-xs font-sans not-italic text-muted-editorial font-medium">
+                    — Saragabani Gopu, Founding Address (1947)
+                  </div>
+                </blockquote>
+
+                <div className="space-y-3 text-body text-sm leading-relaxed">
+                  <p>
+                    Rather than engaging in political maneuvers during the dawn of freedom, Founder Saragabani Gopu chose the path of constructive social discipline. He envisioned an organized cadre of youth dedicated to selfless community service, physical fitness, humanitarian relief, and cultural cohesion.
+                  </p>
+                  <p>
+                    His vision continues to guide Maha Seva Dal's humanitarian wings across India—from daily Annadanam food drives to free health camps, legal aid clinics, and educational support for underprivileged children.
+                  </p>
+                </div>
+
+                {/* Key Pillars */}
+                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-hairline">
+                  <div className="p-3 bg-surface-soft rounded-lg text-center">
+                    <div className="text-xs uppercase tracking-wider text-[#FF6200] font-semibold">Service</div>
+                    <div className="text-[11px] text-muted-editorial mt-0.5">Selfless Seva</div>
+                  </div>
+                  <div className="p-3 bg-surface-soft rounded-lg text-center">
+                    <div className="text-xs uppercase tracking-wider text-[#FF6200] font-semibold">Discipline</div>
+                    <div className="text-[11px] text-muted-editorial mt-0.5">Youth Cadre</div>
+                  </div>
+                  <div className="p-3 bg-surface-soft rounded-lg text-center">
+                    <div className="text-xs uppercase tracking-wider text-[#FF6200] font-semibold">Unity</div>
+                    <div className="text-[11px] text-muted-editorial mt-0.5">Social Harmony</div>
+                  </div>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="pt-2 flex flex-wrap items-center gap-4">
+                  <Link to="/origins" className="btn-primary-coral text-xs">
+                    <span>Read Full 1947 Origins</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                  <Link to="/ideology" className="btn-secondary-cream text-xs">
+                    <span>Core Principles & Ideology</span>
+                  </Link>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          {/* Historic Leadership Lineage Gallery */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">Historical Succession</span>
+                <h3 className="font-serif text-2xl sm:text-3xl text-ink mt-1">Presidents & Leadership Lineage</h3>
+                <p className="text-xs text-muted-editorial mt-1 max-w-lg">
+                  Honoring the distinguished national presidents who spearheaded Maha Seva Dal's nationwide mission over the decades.
+                </p>
+              </div>
+              <Link to="/leadership" className="btn-primary-coral text-xs self-start sm:self-auto shrink-0">
+                <span>View Full Presidents Archive</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch">
+              {PRESIDENTS.map((pres) => (
+                <div
+                  key={pres.id}
+                  onClick={() => setAboutPresident(pres)}
+                  className="bg-canvas border border-[#E8E2D9] rounded-2xl overflow-hidden hover:border-[#FF6200]/50 hover:shadow-md transition-all duration-300 flex flex-col group cursor-pointer"
+                  title="Click to view About & Biography"
+                >
+                  {/* Photo at the top - 100% Edge-to-Edge 2:3 Ratio */}
+                  <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface-card border-b border-hairline shrink-0">
+                    <img
+                      src={pres.image}
+                      alt={`${pres.name} - ${pres.role}`}
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    
+                    {/* Year Badge */}
+                    <div className="absolute top-2.5 left-2.5 z-20 bg-gradient-to-r from-[#FF6200] to-[#FF9933] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      {pres.badge.split(" ")[0]}
+                    </div>
+
+                    {/* Role Tag */}
+                    <div className="absolute top-2.5 right-2.5 z-20 bg-white/90 backdrop-blur-sm text-ink text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                      {pres.role.includes("Founder") ? "Founder" : "President"}
+                    </div>
+
+                    {/* Hover Hint */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3 z-20 pointer-events-none">
+                      <span className="bg-black/80 backdrop-blur-sm text-white text-[11px] font-medium px-2.5 py-1 rounded-full shadow flex items-center gap-1">
+                        <span>Click for About</span>
+                        <ArrowRight size={11} />
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Downside of the Photo: Role, Name, Tenure, Short Description */}
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="h-5 flex items-center text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold truncate">
+                        {pres.role}
+                      </div>
+                      <div className="h-12 flex items-center mt-0.5">
+                        <h4 className="font-serif text-base text-ink font-semibold leading-tight line-clamp-2 group-hover:text-[#FF6200] transition-colors">
+                          {pres.name}
+                        </h4>
+                      </div>
+                      <div className="h-5 flex items-center text-[11px] text-muted-editorial font-medium truncate mt-0.5">
+                        {pres.tenure}
+                      </div>
+                      <p className="h-10 text-xs text-body leading-relaxed line-clamp-2 mt-2">
+                        {pres.historicalContext}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
@@ -419,6 +584,116 @@ const Home = () => {
 
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════
+          PRESIDENT ABOUT MODAL (TRIGGERED ON PHOTO/CARD CLICK)
+      ══════════════════════════════════════════ */}
+      {aboutPresident && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setAboutPresident(null)}
+        >
+          <div
+            className="bg-canvas border border-[#E8E2D9] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setAboutPresident(null)}
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-surface-soft hover:bg-[#FF6200] hover:text-white text-ink flex items-center justify-center transition-colors border border-hairline shadow-sm"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row gap-6 items-start">
+                
+                {/* President Portrait Photo */}
+                <div className="w-full sm:w-48 shrink-0 flex flex-col items-center">
+                  <div className="aspect-[2/3] w-full max-w-[200px] rounded-xl overflow-hidden border-2 border-[#FF6200]/30 shadow-md bg-surface-card">
+                    <img
+                      src={aboutPresident.image}
+                      alt={aboutPresident.name}
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
+                  <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF6200]/10 text-xs font-semibold text-[#FF6200]">
+                    <span>{aboutPresident.badge}</span>
+                  </div>
+                </div>
+
+                {/* President Bio & About Details */}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">
+                      {aboutPresident.role}
+                    </span>
+                    <h3 className="font-serif text-2xl sm:text-3xl text-ink font-semibold mt-1">
+                      {aboutPresident.name}
+                    </h3>
+                    <p className="text-xs text-muted-editorial font-medium mt-0.5">
+                      {aboutPresident.tenure}
+                    </p>
+                  </div>
+
+                  {/* Official Quote */}
+                  {aboutPresident.quote && (
+                    <blockquote className="border-l-3 border-[#FF6200] pl-3 py-2 bg-surface-soft/80 rounded-r-lg italic font-serif text-xs sm:text-sm text-ink leading-relaxed">
+                      "{aboutPresident.quote}"
+                      <div className="mt-1.5 text-[11px] font-sans not-italic text-muted-editorial font-medium">
+                        — {aboutPresident.quoteAttribution}
+                      </div>
+                    </blockquote>
+                  )}
+
+                  {/* Historical Context / About Narrative */}
+                  <div>
+                    <h4 className="text-xs uppercase tracking-wider font-semibold text-ink mb-1.5">
+                      About & Historical Leadership
+                    </h4>
+                    <p className="text-xs sm:text-sm text-body leading-relaxed">
+                      {aboutPresident.historicalContext}
+                    </p>
+                  </div>
+
+                  {/* Key Contributions / Achievements */}
+                  {aboutPresident.achievements && aboutPresident.achievements.length > 0 && (
+                    <div>
+                      <h4 className="text-xs uppercase tracking-wider font-semibold text-ink mb-2">
+                        Key Historical Contributions
+                      </h4>
+                      <ul className="space-y-1.5 text-xs text-body">
+                        {aboutPresident.achievements.map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-[#FF6200] font-bold mt-0.5">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Leadership Page Deep Link */}
+                  <div className="pt-3 border-t border-hairline flex items-center justify-between">
+                    <Link
+                      to={`/leadership#${aboutPresident.id}`}
+                      onClick={() => setAboutPresident(null)}
+                      className="text-xs font-semibold text-[#FF6200] hover:underline flex items-center gap-1.5"
+                    >
+                      <span>View Full Archival Record in Leadership Lineage</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </PageLayout>
   );

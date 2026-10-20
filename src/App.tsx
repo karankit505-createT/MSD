@@ -9,6 +9,7 @@ import Origins from "./pages/Origins";
 import Ideology from "./pages/Ideology";
 import Partition from "./pages/Partition";
 import Legacy from "./pages/Legacy";
+import Leadership from "./pages/Leadership";
 import Events from "./pages/Events";
 import GuruPoornima from "./pages/GuruPoornima";
 import Mahashivratri from "./pages/Mahashivratri";
@@ -35,6 +36,8 @@ const App = () => (
           <Route path="/ideology" element={<Ideology />} />
           <Route path="/partition" element={<Partition />} />
           <Route path="/legacy" element={<Legacy />} />
+          <Route path="/leadership" element={<Leadership />} />
+          <Route path="/presidents" element={<Leadership />} />
           {/* Events */}
           <Route path="/events" element={<Events />} />
           <Route path="/events/guru-poornima" element={<GuruPoornima />} />
