@@ -1344,39 +1344,6 @@ const Admin = () => {
                           </span>
                         )}
 
-                        {/* Modal Header Quick Action Buttons: Call, WhatsApp, Delete */}
-                        {selectedMember.mobile && (
-                          <a
-                            href={`tel:+91${selectedMember.mobile.replace(/\D/g, "")}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white border border-sky-200 text-xs font-semibold transition-all shadow-2xs"
-                            title={`Call +91 ${selectedMember.mobile}`}
-                          >
-                            <Phone size={12} />
-                            <span>Call</span>
-                          </a>
-                        )}
-
-                        {(selectedMember.whatsapp || selectedMember.mobile) && (
-                          <a
-                            href={getMemberWhatsAppUrl(selectedMember)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 text-xs font-semibold transition-all shadow-2xs"
-                            title={`WhatsApp ${selectedMember.fullName}`}
-                          >
-                            <WhatsAppIcon size={12} />
-                            <span>WhatsApp</span>
-                          </a>
-                        )}
-
-                        <button
-                          onClick={() => handleDeleteMember(selectedMember)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
-                          title="Permanently Delete Member Record"
-                        >
-                          <Trash2 size={12} />
-                          <span>Delete</span>
-                        </button>
                       </div>
                     </div>
 
@@ -1705,17 +1672,83 @@ const Admin = () => {
                   </div>
                 </div>
               ) : (
-                /* TAB 2: OFFICIAL PVC ID CARD & PDF DOWNLOAD CENTER */
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Left Column (Card Preview) */}
-                  <div className="lg:col-span-6 flex flex-col items-center w-full min-w-0">
-                    <div className="w-full flex items-center justify-between pb-2 mb-2 border-b border-hairline">
-                      <span className="text-xs font-bold text-ink uppercase tracking-wider">
-                        Official PVC Identity Card
-                      </span>
-                      <span className="text-[11px] text-muted-editorial font-mono">
-                        Standard PVC (85.6mm × 54mm equivalent ratio)
-                      </span>
+                /* TAB 2: OFFICIAL PVC ID CARD & PDF DOWNLOAD CENTER (FULL-WIDTH STUDIO) */
+                <div className="space-y-4">
+                  {/* Top Control Bar: Status, Signatory, and Download Action Hub */}
+                  <div className="p-4 rounded-2xl bg-surface-soft/80 border border-hairline flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 shadow-2xs">
+                    {/* Left: Status & Signatory Info */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {selectedMember.status === "APPROVED" ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 shadow-2xs">
+                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                          <span>Official Card Approved · Seal & Signature Active</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800 shadow-2xs">
+                            <Clock size={14} className="text-amber-600 shrink-0" />
+                            <span>Provisional ID Card (Pending Approval)</span>
+                          </div>
+                          <button
+                            onClick={() => handleUpdateStatus(selectedMember._id, "APPROVED")}
+                            disabled={actionLoading}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-all active:scale-95"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Approve & Seal</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="h-4 w-px bg-hairline hidden sm:block" />
+
+                      <div className="flex items-center gap-2 text-xs text-muted-editorial">
+                        <span>
+                          Signatory: <strong className="text-ink font-semibold">{cardSettings.signatoryName}</strong> ({cardSettings.signatoryTitle})
+                        </span>
+                        <button
+                          onClick={() => setCardSettingsModalOpen(true)}
+                          className="text-[#FF6200] hover:underline font-semibold cursor-pointer text-[11px]"
+                        >
+                          Change Seal / Sign →
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right: Primary Download & Print Buttons (Both Sides Only) */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {/* Download PDF Both Sides */}
+                      <button
+                        onClick={() => handleDownloadPdf(selectedMember)}
+                        disabled={downloadingPdf || downloadingPng}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#172554] text-white text-xs font-bold shadow-xs hover:shadow transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                        title="Download Print-ready PDF with Front & Back side-by-side"
+                      >
+                        <FileText size={15} />
+                        <span>{downloadingPdf ? "Generating PDF..." : "Download PDF (Both Sides)"}</span>
+                      </button>
+
+                      {/* Download PNG Both Sides */}
+                      <button
+                        onClick={() => handleDownloadPng(selectedMember, "both")}
+                        disabled={downloadingPdf || downloadingPng}
+                        className="btn-primary-coral inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                        title="Download Ultra-crisp PNG sheet with Front & Back"
+                      >
+                        <Download size={15} />
+                        <span>{downloadingPng ? "Rendering..." : "Download PNG (Both Sides)"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Main Hero Card Stage: Full Width Side-by-Side Presentation */}
+                  <div className="w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-[#FAF7F2] to-[#F3EDE2] rounded-2xl border border-hairline/80 shadow-inner">
+                    {/* Exact Card Dimensions Badge */}
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-editorial bg-[#faf7ee] px-4 py-2 rounded-xl border border-[#e5dac8] shadow-2xs mb-4">
+                      <span className="font-bold text-[#FF6200]">Card Dimensions:</span>
+                      <span className="font-mono font-bold text-ink">70 mm × 100 mm (2.63" × 3.88")</span>
+                      <span className="text-muted-editorial/40">•</span>
+                      <span className="text-[11px]">Standard PVC ID Holder & Lamination Pouch Size</span>
                     </div>
 
                     <DigitalIdCard
@@ -1726,158 +1759,19 @@ const Admin = () => {
                       signatoryName={cardSettings.signatoryName}
                       signatoryTitle={cardSettings.signatoryTitle}
                       hideActionButtons={true}
-                      stacked={true}
-                      showViewToggle={true}
-                      defaultView="front"
+                      stacked={false}
+                      showViewToggle={false}
+                      defaultView="both"
                     />
                   </div>
 
-                  {/* Right Column: Card Actions & PDF Download Center */}
-                  <div className="lg:col-span-6 space-y-4">
-                    {/* Status & Seal Notice Card */}
-                    <div className={`p-4 rounded-xl border ${
-                      selectedMember.status === "APPROVED"
-                        ? "bg-emerald-50/70 border-emerald-200"
-                        : "bg-amber-50/70 border-amber-200"
-                    }`}>
-                      <div className="flex items-center justify-between gap-3 mb-1.5">
-                        <span className="font-bold text-xs flex items-center gap-1.5">
-                          {selectedMember.status === "APPROVED" ? (
-                            <span className="text-emerald-800 flex items-center gap-1">
-                              <CheckCircle2 size={14} className="text-emerald-600" />
-                              Official Card Approved (Seal & Signature Active)
-                            </span>
-                          ) : (
-                            <span className="text-amber-800 flex items-center gap-1">
-                              <Clock size={14} className="text-amber-600" />
-                              Provisional ID Card (Pending Approval)
-                            </span>
-                          )}
-                        </span>
-                        {selectedMember.status !== "APPROVED" && (
-                          <button
-                            onClick={() => handleUpdateStatus(selectedMember._id, "APPROVED")}
-                            disabled={actionLoading}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
-                          >
-                            <CheckCircle2 size={12} />
-                            <span>Approve & Seal</span>
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-editorial leading-relaxed">
-                        {selectedMember.status === "APPROVED"
-                          ? "The official Maha Seva Dal seal and executive signature are digitally stamped onto this card and included in all downloads."
-                          : "This card is marked PROVISIONAL. Approving this cadre member will instantly apply the authorized seal and signature."}
-                      </p>
-                    </div>
-
-                    {/* Download Hub Options */}
-                    <div className="p-4 rounded-xl bg-surface-soft/60 border border-hairline space-y-3">
-                      <span className="text-[10px] font-bold text-muted-editorial uppercase tracking-wider block">
-                        Download & Print Options
-                      </span>
-
-                      {/* Download PDF Button */}
-                      <button
-                        onClick={() => handleDownloadPdf(selectedMember)}
-                        disabled={downloadingPdf || downloadingPng}
-                        className="w-full bg-[#1e3a8a] hover:bg-[#172554] text-white p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-white">
-                            <FileText size={18} />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-xs text-white group-hover:underline">
-                              Download ID Card (PDF - Both Sides)
-                            </div>
-                            <div className="text-[10px] text-blue-200">
-                              1-Page Official Print Certificate with Front & Back Sides Side-by-Side & Crop Lines
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-blue-200">
-                          {downloadingPdf ? "Generating..." : "PDF →"}
-                        </span>
-                      </button>
-
-                      {/* Download PNG Button */}
-                      <button
-                        onClick={() => handleDownloadPng(selectedMember, "both")}
-                        disabled={downloadingPdf || downloadingPng}
-                        className="w-full btn-primary-coral p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 text-white">
-                            <Download size={18} />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-xs text-white group-hover:underline">
-                              Download ID Card (PNG - Both Sides)
-                            </div>
-                            <div className="text-[10px] text-white/80">
-                              Ultra-crisp print sheet with Front and Back sides side-by-side
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-white/90">
-                          {downloadingPng ? "Rendering..." : "PNG →"}
-                        </span>
-                      </button>
-
-                      {/* Direct Single Side PNG Links */}
-                      <div className="flex items-center justify-center gap-3 text-[11px] text-muted-editorial pt-1 border-t border-hairline/60">
-                        <span>Single Side PNG:</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadPng(selectedMember, "front")}
-                          disabled={downloadingPdf || downloadingPng}
-                          className="text-[#FF6200] hover:underline font-semibold cursor-pointer"
-                        >
-                          Front Side
-                        </button>
-                        <span className="text-muted-editorial/40">•</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadPng(selectedMember, "back")}
-                          disabled={downloadingPdf || downloadingPng}
-                          className="text-[#FF6200] hover:underline font-semibold cursor-pointer"
-                        >
-                          Back Side
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Seal & Signatory Settings Quick Box */}
-                    <div className="p-3.5 rounded-xl bg-white border border-hairline flex items-center justify-between gap-3 text-xs">
-                      <div>
-                        <span className="text-muted-editorial block text-[10px] uppercase font-semibold">
-                          Signatory Authority
-                        </span>
-                        <span className="font-bold text-ink">
-                          {cardSettings.signatoryName} · {cardSettings.signatoryTitle}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setCardSettingsModalOpen(true)}
-                        className="text-[#FF6200] hover:underline text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Change Seal / Sign</span> →
-                      </button>
-                    </div>
-
-                    {/* Verification Notice */}
-                    <div className="p-3 rounded-xl bg-surface-soft/40 border border-hairline text-[11px] text-muted-editorial space-y-1">
-                      <div className="font-semibold text-ink flex items-center gap-1">
-                        <ShieldCheck size={12} className="text-[#FF6200]" />
-                        <span>National Cadre Registry Verification</span>
-                      </div>
-                      <p>
-                        Scanning the card's QR code validates genuine membership at{" "}
-                        <span className="font-mono text-[#FF6200]">https://mahasevadal.com/verify?id={selectedMember.registrationId}</span>
-                      </p>
-                    </div>
+                  {/* Verification Notice Bar */}
+                  <div className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-surface-soft/60 border border-hairline text-center text-xs text-muted-editorial">
+                    <ShieldCheck size={13} className="text-[#FF6200] shrink-0" />
+                    <span>National Cadre Registry Verification: Scanning QR validates genuine membership at</span>
+                    <span className="font-mono text-[#FF6200] font-semibold">
+                      https://mahasevadal.com/verify?id={selectedMember.registrationId}
+                    </span>
                   </div>
                 </div>
               )}

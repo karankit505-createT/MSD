@@ -68,31 +68,31 @@ const Home = () => {
               </p>
 
               {/* Primary Action Row */}
-              <div className="pt-2 flex flex-wrap items-center gap-4">
-                <Link to="/events" className="btn-primary-coral">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <Link to="/events" className="btn-primary-coral justify-center">
                   <span>Explore Events & Activities</span>
                   <ArrowRight size={16} />
                 </Link>
-                <Link to="/origins" className="btn-secondary-cream">
+                <Link to="/origins" className="btn-secondary-cream justify-center">
                   <span>Read 1947 Origins</span> 
                 </Link>
               </div>
 
               {/* Quick Stat Bar */}
-              <div className="pt-6 border-t border-hairline grid grid-cols-3 gap-4 items-start">
+              <div className="pt-6 border-t border-hairline grid grid-cols-3 gap-2 sm:gap-4 items-start">
                 <div>
-                  <div className="font-serif text-xl text-ink">1947</div>
-                  <div className="text-xs text-muted-editorial">Year Established</div>
+                  <div className="font-serif text-lg sm:text-xl text-ink">1947</div>
+                  <div className="text-[11px] sm:text-xs text-muted-editorial">Year Established</div>
                 </div>
-                <Link to="/leadership" className="block group">
-                  <div className="font-serif text-xl text-ink leading-tight group-hover:text-[#FF6200] transition-colors">
+                <div>
+                  <div className="font-serif text-lg sm:text-xl text-ink leading-tight">
                     Saragabani Gopu
                   </div>
-                  <div className="text-xs text-muted-editorial">Founder</div>
-                </Link>
+                  <div className="text-[11px] sm:text-xs text-muted-editorial">Founder</div>
+                </div>
                 <div>
-                  <div className="font-serif text-xl text-ink">Nationwide</div>
-                  <div className="text-xs text-muted-editorial">Service Reach</div>
+                  <div className="font-serif text-lg sm:text-xl text-ink">Nationwide</div>
+                  <div className="text-[11px] sm:text-xs text-muted-editorial">Service Reach</div>
                 </div>
               </div>
 
@@ -147,17 +147,19 @@ const Home = () => {
               
               {/* Founder Image Column */}
               <div className="lg:col-span-5 flex flex-col items-center">
-                <div className="w-full max-w-sm rounded-2xl overflow-hidden border-2 border-[#FF6200]/30 shadow-lg bg-surface-card">
+                <div
+                  onClick={() => {
+                    const founder = PRESIDENTS.find((p) => p.id === "gopu-1947") || PRESIDENTS[0];
+                    setAboutPresident(founder);
+                  }}
+                  className="w-full max-w-sm rounded-2xl overflow-hidden border-2 border-[#FF6200]/30 shadow-lg bg-surface-card cursor-pointer group"
+                  title="Click to view Founder details & biography"
+                >
                   <img
                     src="/founder-saragabani-gopu-1947.jpg"
                     alt="Founder Saragabani Gopu - Maha Seva Dal 1947"
-                    className="w-full h-auto object-cover transition-transform duration-500 hover:scale-[1.02]"
+                    className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                   />
-                </div>
-
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-editorial">
-                  <span className="w-2 h-2 rounded-full bg-[#138808]" />
-                  <span>Historic 1947 Cadre Archive</span>
                 </div>
               </div>
 
@@ -168,7 +170,14 @@ const Home = () => {
                   <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">
                     Founding Father & Visionary
                   </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-ink mt-1">
+                  <h3
+                    onClick={() => {
+                      const founder = PRESIDENTS.find((p) => p.id === "gopu-1947") || PRESIDENTS[0];
+                      setAboutPresident(founder);
+                    }}
+                    className="font-serif text-2xl sm:text-3xl lg:text-4xl text-ink mt-1 hover:text-[#FF6200] cursor-pointer transition-colors"
+                    title="Click to view Founder details"
+                  >
                     Saragabani Gopu
                   </h3>
                   <p className="text-xs text-muted-editorial mt-1">
@@ -209,17 +218,6 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Navigation Links */}
-                <div className="pt-2 flex flex-wrap items-center gap-4">
-                  <Link to="/origins" className="btn-primary-coral text-xs">
-                    <span>Read Full 1947 Origins</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                  <Link to="/ideology" className="btn-secondary-cream text-xs">
-                    <span>Core Principles & Ideology</span>
-                  </Link>
-                </div>
-
               </div>
 
             </div>
@@ -227,18 +225,12 @@ const Home = () => {
 
           {/* Historic Leadership Lineage Gallery */}
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">Historical Succession</span>
-                <h3 className="font-serif text-2xl sm:text-3xl text-ink mt-1">Presidents & Leadership Lineage</h3>
-                <p className="text-xs text-muted-editorial mt-1 max-w-lg">
-                  Honoring the distinguished national presidents who spearheaded Maha Seva Dal's nationwide mission over the decades.
-                </p>
-              </div>
-              <Link to="/leadership" className="btn-primary-coral text-xs self-start sm:self-auto shrink-0">
-                <span>View Full Presidents Archive</span>
-                <ArrowRight size={14} />
-              </Link>
+            <div className="mb-8">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#FF6200]">Historical Succession</span>
+              <h3 className="font-serif text-2xl sm:text-3xl text-ink mt-1">Presidents & Leadership Lineage</h3>
+              <p className="text-xs text-muted-editorial mt-1 max-w-lg">
+                Honoring the distinguished national presidents who spearheaded Maha Seva Dal's nationwide mission over the decades.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch">
@@ -246,7 +238,7 @@ const Home = () => {
                 <div
                   key={pres.id}
                   onClick={() => setAboutPresident(pres)}
-                  className="bg-canvas border border-[#E8E2D9] rounded-2xl overflow-hidden hover:border-[#FF6200]/50 hover:shadow-md transition-all duration-300 flex flex-col group cursor-pointer"
+                  className="bg-canvas border border-[#E8E2D9] rounded-2xl overflow-hidden hover:border-[#FF6200]/50 hover:shadow-md transition-all duration-300 flex flex-col group cursor-pointer max-w-sm sm:max-w-none mx-auto w-full"
                   title="Click to view About & Biography"
                 >
                   {/* Photo at the top - 100% Edge-to-Edge 2:3 Ratio */}
@@ -440,7 +432,7 @@ const Home = () => {
 
               <div>
                 <Link to="/events/guru-poornima" className="btn-primary-coral text-xs">
-                  <span>View Details & Schedule</span>
+                  <span>View Event Details</span>
                   <ArrowRight size={14} />
                 </Link>
               </div>
@@ -590,29 +582,31 @@ const Home = () => {
       ══════════════════════════════════════════ */}
       {aboutPresident && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-5 bg-black/75 backdrop-blur-sm no-scrollbar animate-in fade-in duration-200"
           onClick={() => setAboutPresident(null)}
         >
           <div
-            className="bg-canvas border border-[#E8E2D9] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            className="bg-canvas border border-[#E8E2D9] rounded-2xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto no-scrollbar shadow-2xl relative p-4 sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setAboutPresident(null)}
-              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-surface-soft hover:bg-[#FF6200] hover:text-white text-ink flex items-center justify-center transition-colors border border-hairline shadow-sm"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-10 h-10 rounded-full bg-white/95 hover:bg-[#FF6200] hover:text-white text-ink flex items-center justify-center transition-all border border-hairline shadow-md active:scale-95 touch-manipulation"
               aria-label="Close"
             >
               <X size={18} />
             </button>
 
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <div>
+              <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
                 
                 {/* President Portrait Photo */}
-                <div className="w-full sm:w-48 shrink-0 flex flex-col items-center">
-                  <div className="aspect-[2/3] w-full max-w-[200px] rounded-xl overflow-hidden border-2 border-[#FF6200]/30 shadow-md bg-surface-card">
+                <div className="w-full sm:w-48 shrink-0 flex flex-col items-center pt-2 sm:pt-0">
+                  <div className="aspect-[2/3] w-full max-w-[170px] sm:max-w-[200px] rounded-xl overflow-hidden border-2 border-[#FF6200]/30 shadow-md bg-surface-card">
                     <img
                       src={aboutPresident.image}
                       alt={aboutPresident.name}

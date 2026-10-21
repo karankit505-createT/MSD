@@ -47,31 +47,33 @@ const Legacy = () => {
               {/* Leader 1 */}
               <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                  <Link
+                    to="/leadership#gopu-1947"
+                    className="relative block aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline cursor-pointer"
+                    title="Click photo to view biography & details"
+                  >
                     <img
                       src="/presidents/president-1947.jpg"
                       alt="Founder Sharagabani Gopu"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                       1947 Proclamation
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-4 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">Founder & 1st President</div>
-                    <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    <Link to="/leadership#gopu-1947" className="block hover:text-[#FF6200] transition-colors">
+                      <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    </Link>
                     <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
                       Established foundational values: Service, Discipline, and Unity across grassroots youth assemblies.
                     </p>
                   </div>
                 </div>
                 <div className="p-4 pt-0">
-                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
-                    <Link to="/leadership#gopu-1947" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
-                      <span>Biography</span>
-                      <ArrowRight size={10} />
-                    </Link>
-                    <span className="text-muted-editorial">1947 Foundation</span>
+                  <div className="pt-2 border-t border-hairline text-center text-[10px] text-muted-editorial font-medium">
+                    1947 Foundation
                   </div>
                 </div>
               </div>
@@ -79,31 +81,33 @@ const Legacy = () => {
               {/* Leader 2 */}
               <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                  <Link
+                    to="/leadership#gopu-1949"
+                    className="relative block aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline cursor-pointer"
+                    title="Click photo to view biography & details"
+                  >
                     <img
                       src="/presidents/president-1949.jpg"
                       alt="National President Sharagabani Gopu"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                       1949 Era
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-4 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
-                    <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    <Link to="/leadership#gopu-1949" className="block hover:text-[#FF6200] transition-colors">
+                      <h4 className="font-serif text-base text-ink font-semibold">Sharagabani Gopu</h4>
+                    </Link>
                     <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
                       Codified the volunteer constitution, daily shakha routines, and continuous mass Annadanam.
                     </p>
                   </div>
                 </div>
                 <div className="p-4 pt-0">
-                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
-                    <Link to="/leadership#gopu-1949" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
-                      <span>Biography</span>
-                      <ArrowRight size={10} />
-                    </Link>
-                    <span className="text-muted-editorial">1949 Governance</span>
+                  <div className="pt-2 border-t border-hairline text-center text-[10px] text-muted-editorial font-medium">
+                    1949 Governance
                   </div>
                 </div>
               </div>
@@ -111,31 +115,33 @@ const Legacy = () => {
               {/* Leader 3 (Narendra Singh) */}
               <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                  <Link
+                    to="/leadership#narendra-1961"
+                    className="relative block aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline cursor-pointer"
+                    title="Click photo to view biography & details"
+                  >
                     <img
                       src="/presidents/president-1961.jpg"
                       alt="National President Narendra Singh"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                       1961 Expansion
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-4 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
-                    <h4 className="font-serif text-base text-ink font-semibold">Narendra Singh</h4>
+                    <Link to="/leadership#narendra-1961" className="block hover:text-[#FF6200] transition-colors">
+                      <h4 className="font-serif text-base text-ink font-semibold">Narendra Singh</h4>
+                    </Link>
                     <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
                       Steered the 1961 expansion phase, strengthening cultural assemblies, student forums, and community seva.
                     </p>
                   </div>
                 </div>
                 <div className="p-4 pt-0">
-                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
-                    <Link to="/leadership#narendra-1961" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
-                      <span>Biography</span>
-                      <ArrowRight size={10} />
-                    </Link>
-                    <span className="text-muted-editorial">1961 Expansion</span>
+                  <div className="pt-2 border-t border-hairline text-center text-[10px] text-muted-editorial font-medium">
+                    1961 Expansion
                   </div>
                 </div>
               </div>
@@ -143,31 +149,33 @@ const Legacy = () => {
               {/* Leader 4 (Krishna Gowda) */}
               <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                  <Link
+                    to="/leadership#krishna-gowda-1986"
+                    className="relative block aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline cursor-pointer"
+                    title="Click photo to view biography & details"
+                  >
                     <img
                       src="/presidents/president-1986.jpg"
                       alt="National President M. H. Krishna Gowda"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                       1986 Era
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-4 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
-                    <h4 className="font-serif text-base text-ink font-semibold">M. H. Krishna Gowda</h4>
+                    <Link to="/leadership#krishna-gowda-1986" className="block hover:text-[#FF6200] transition-colors">
+                      <h4 className="font-serif text-base text-ink font-semibold">M. H. Krishna Gowda</h4>
+                    </Link>
                     <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
                       Expanded nationwide volunteer brigades, formalized youth coordinator training, and spearheaded rural aid.
                     </p>
                   </div>
                 </div>
                 <div className="p-4 pt-0">
-                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
-                    <Link to="/leadership#krishna-gowda-1986" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
-                      <span>Biography</span>
-                      <ArrowRight size={10} />
-                    </Link>
-                    <span className="text-muted-editorial">1986 Leadership</span>
+                  <div className="pt-2 border-t border-hairline text-center text-[10px] text-muted-editorial font-medium">
+                    1986 Leadership
                   </div>
                 </div>
               </div>
@@ -175,31 +183,33 @@ const Legacy = () => {
               {/* Leader 5 (1997) */}
               <div className="bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-[#FF6200]/40 transition-all duration-300 flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline">
+                  <Link
+                    to="/leadership#president-1997"
+                    className="relative block aspect-[2/3] bg-surface-card overflow-hidden border-b border-hairline cursor-pointer"
+                    title="Click photo to view biography & details"
+                  >
                     <img
                       src="/presidents/president-1997.jpg"
                       alt="National President 1997"
-                      className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2.5 left-2.5 z-20 bg-[#FF6200] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                       1997 Jubilee
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-4 space-y-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-[#FF6200] font-semibold">National President</div>
-                    <h4 className="font-serif text-base text-ink font-semibold">National Leadership (1997)</h4>
+                    <Link to="/leadership#president-1997" className="block hover:text-[#FF6200] transition-colors">
+                      <h4 className="font-serif text-base text-ink font-semibold">National Leadership (1997)</h4>
+                    </Link>
                     <p className="text-[11px] text-muted-editorial leading-relaxed line-clamp-3">
                       Led the 50-year Golden Jubilee celebrations uniting thousands of grassroots cadre members across India.
                     </p>
                   </div>
                 </div>
                 <div className="p-4 pt-0">
-                  <div className="pt-2 border-t border-hairline flex items-center justify-between text-[10px]">
-                    <Link to="/leadership#president-1997" className="text-[#FF6200] hover:underline font-semibold flex items-center gap-1">
-                      <span>Biography</span>
-                      <ArrowRight size={10} />
-                    </Link>
-                    <span className="text-muted-editorial">1997 Golden Jubilee</span>
+                  <div className="pt-2 border-t border-hairline text-center text-[10px] text-muted-editorial font-medium">
+                    1997 Golden Jubilee
                   </div>
                 </div>
               </div>

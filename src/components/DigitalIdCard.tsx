@@ -1881,7 +1881,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
         {(activeView === "both" || activeView === "front") && (
           <div className="flex flex-col items-center flex-1 max-w-[394px]">
           {/* Front Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-full max-w-[330px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+          <div className="flex items-center justify-center gap-1.5 w-[min(330px,calc(100vw-36px))] sm:w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
             <ShieldCheck size={14} />
             <span>FRONT SIDE</span>
           </div>
@@ -1890,7 +1890,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
           <div className="p-2 sm:p-3 bg-surface-soft/60 rounded-3xl border border-hairline shadow-inner max-w-full h-full flex flex-col justify-center">
             <div
               id="msd-pvc-card-front"
-              className="w-[330px] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-[min(330px,calc(100vw-36px))] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",
@@ -2133,7 +2133,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
         {(activeView === "both" || activeView === "back") && (
           <div className="flex flex-col items-center flex-1 max-w-[394px]">
           {/* Back Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-full max-w-[330px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+          <div className="flex items-center justify-center gap-1.5 w-[min(330px,calc(100vw-36px))] sm:w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
             <FileText size={14} />
             <span>BACK SIDE</span>
           </div>
@@ -2142,7 +2142,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
           <div className="p-2 sm:p-3 bg-surface-soft/60 rounded-3xl border border-hairline shadow-inner max-w-full h-full flex flex-col justify-center">
             <div
               id="msd-pvc-card-back"
-              className="w-[330px] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-[min(330px,calc(100vw-36px))] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",

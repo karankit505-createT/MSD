@@ -24,10 +24,18 @@ const syncToLocalBackupFile = async () => {
   }
 };
 
-// Initial sync on module load
-setTimeout(() => {
-  syncToLocalBackupFile().catch(() => {});
-}, 3000);
+// Initial sync on module load (skip in test environments)
+const isTestEnv =
+  process.env.NODE_ENV === "test" ||
+  Boolean(process.env.NODE_TEST_CONTEXT) ||
+  process.argv.some((arg) => arg.includes("test")) ||
+  Boolean(process.env.VITEST);
+
+if (!isTestEnv) {
+  setTimeout(() => {
+    syncToLocalBackupFile().catch(() => {});
+  }, 3000);
+}
 
 // State Code Mapping Helper (All 28 States & 8 Union Territories)
 const getStateCode = (stateName) => {
@@ -770,6 +778,7 @@ module.exports = {
   proxyPhoto,
   getCardSettings,
   updateCardSettings,
+  getStateCode,
 };
 
 

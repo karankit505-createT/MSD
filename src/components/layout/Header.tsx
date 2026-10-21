@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown, Heart, Mail, Phone, Utensils, Flame, FileText, Search } from "lucide-react";
 import appointmentsData from "@/data/appointments.json";
+import { scrollToPageTop } from "@/components/ScrollToTop";
 
 const navItems = [
   { path: "/", label: "Home" },
@@ -54,6 +55,13 @@ const Header = () => {
     setMobileEventsOpen(false);
     setMobileApptsOpen(false);
   }, [location.pathname]);
+
+  const handleNavClick = () => {
+    scrollToPageTop();
+    setOpenEvents(false);
+    setOpenAppts(false);
+    setIsMobileMenuOpen(false);
+  };
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
@@ -155,7 +163,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
         {/* Brand Logo & Wordmark — Cloudinary CDN Logo */}
-        <Link to="/" className="flex items-center gap-3 group shrink-0">
+        <Link to="/" onClick={handleNavClick} className="flex items-center gap-3 group shrink-0">
           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
             <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
           </div>
@@ -177,6 +185,7 @@ const Header = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={handleNavClick}
                 className={`whitespace-nowrap transition-colors relative py-1.5 ${isActive ? "text-[#FF6200] font-semibold" : "text-body-main hover:text-[#FF6200]"
                   }`}
               >
@@ -205,6 +214,7 @@ const Header = () => {
               <div className="absolute top-full left-0 mt-2 w-72 bg-canvas border border-hairline rounded-xl shadow-lg p-2.5 z-50 animate-fade-in">
                 <Link
                   to="/events"
+                  onClick={handleNavClick}
                   className="block px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[#FF6200] hover:bg-surface-soft rounded-lg border-b border-hairline mb-1 transition-colors"
                 >
                   All Events Overview →
@@ -215,6 +225,7 @@ const Header = () => {
                     <Link
                       key={ev.path}
                       to={ev.path}
+                      onClick={handleNavClick}
                       className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-soft transition-colors text-sm text-ink group"
                     >
                       <span className="flex items-center gap-2.5 min-w-0">
@@ -274,6 +285,7 @@ const Header = () => {
                       <Link
                         key={appt.id}
                         to={`/appointment/${appt.id}`}
+                        onClick={handleNavClick}
                         className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-soft transition-colors text-xs text-ink group"
                       >
                         <div className="min-w-0 pr-2">
@@ -300,6 +312,7 @@ const Header = () => {
         <div className="hidden lg:flex items-center shrink-0">
           <Link
             to="/support"
+            onClick={handleNavClick}
             className="whitespace-nowrap bg-[#FF6200] hover:bg-[#e05600] text-white text-xs xl:text-sm font-semibold px-4 xl:px-5 py-2.5 rounded-full flex items-center gap-2 transition-all shadow-sm hover:shadow shrink-0"
           >
             <Heart size={15} className="stroke-white fill-transparent shrink-0" />
@@ -337,7 +350,7 @@ const Header = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link to="/support" className="btn-primary-coral text-xs px-3 py-1.5">Donate</Link>
+              <Link to="/support" onClick={handleNavClick} className="btn-primary-coral text-xs px-3 py-1.5">Donate</Link>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 rounded-md text-ink hover:bg-surface-card border border-hairline"
@@ -356,6 +369,7 @@ const Header = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={handleNavClick}
                 className={`text-sm py-3 border-b border-hairline font-medium transition-colors ${location.pathname === item.path ? "text-[#FF6200]" : "text-ink hover:text-[#FF6200]"
                   }`}
               >
@@ -380,6 +394,7 @@ const Header = () => {
                 <div className="pb-3 pl-2 flex flex-col gap-1 animate-fade-in">
                   <Link
                     to="/events"
+                    onClick={handleNavClick}
                     className="block text-xs font-semibold text-[#FF6200] py-1.5 px-2 rounded-lg hover:bg-surface-soft transition-colors"
                   >
                     All Events Overview →
@@ -390,6 +405,7 @@ const Header = () => {
                       <Link
                         key={ev.path}
                         to={ev.path}
+                        onClick={handleNavClick}
                         className="flex items-center justify-between text-sm text-ink py-2 px-2 rounded-lg hover:bg-surface-soft transition-colors group"
                       >
                         <span className="flex items-center gap-2">
@@ -423,6 +439,7 @@ const Header = () => {
                     <Link
                       key={appt.id}
                       to={`/appointment/${appt.id}`}
+                      onClick={handleNavClick}
                       className="flex items-center gap-2 text-sm text-ink py-2 px-2 rounded-lg hover:bg-surface-soft hover:text-[#FF6200] transition-colors group"
                     >
                       <FileText size={13} className="text-[#FF6200] flex-shrink-0" />
@@ -442,12 +459,14 @@ const Header = () => {
             <div className="pt-4 space-y-2">
               <Link
                 to="/register"
+                onClick={handleNavClick}
                 className="w-full text-center block text-xs font-semibold py-2.5 px-4 rounded-full border border-[#FF6200] text-[#FF6200] hover:bg-[#FF6200]/10 transition-colors"
               >
                 Join Cadre / Register
               </Link>
               <Link
                 to="/support"
+                onClick={handleNavClick}
                 className="bg-[#FF6200] hover:bg-[#e05600] text-white w-full flex items-center justify-center gap-2 text-sm font-semibold py-3 px-4 rounded-full shadow-sm"
               >
                 <Heart size={15} className="stroke-white fill-transparent" />

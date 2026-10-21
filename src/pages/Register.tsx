@@ -1046,7 +1046,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     fullName: "",
     fatherName: "",
     dob: "",
-    gender: "Male",
+    gender: "",
     mobile: "",
     whatsapp: "",
     email: "",
@@ -2197,6 +2197,43 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     scrollToCardTop();
   };
 
+  const resetForm = () => {
+    setFormData({
+      fullName: "",
+      fatherName: "",
+      dob: "",
+      gender: "",
+      mobile: "",
+      whatsapp: "",
+      email: "",
+      bloodGroup: "",
+      state: "",
+      district: "",
+      taluk: "",
+      address: "",
+      pincode: "",
+      qualification: "Graduate",
+      profession: "",
+      wing: "Legal Wing",
+      hoursAvailable: "5-10 hours/month",
+      idProofType: "Aadhaar Card",
+      idProofNumber: "",
+      pledgeAccepted: false,
+      termsAccepted: false,
+    });
+    setDobDay("");
+    setDobMonth("");
+    setDobYear("");
+    setCustomDistrict("");
+    setSameAsMobile(false);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setRawPhotoSrc(null);
+    setFieldErrors({});
+    setTouchedFields({});
+    setErrorMsg("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -2813,6 +2850,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           onBlur={() => handleBlur("gender")}
                           className={getInputClass("gender")}
                         >
+                          <option value="">Select Gender</option>
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
                           <option value="Other">Other</option>

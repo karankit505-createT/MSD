@@ -1,9 +1,35 @@
+import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, MapPin } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, ShieldCheck, Award, Landmark, X } from "lucide-react";
+import { PRESIDENTS } from "./Leadership";
 
 const Origins = () => {
+  const [showFounderModal, setShowFounderModal] = useState(false);
+  const founder = PRESIDENTS.find((p) => p.id === "gopu-1947") || PRESIDENTS[0];
+
+  // Lock background scroll when modal is active
+  useEffect(() => {
+    if (showFounderModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showFounderModal]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showFounderModal) {
+        setShowFounderModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showFounderModal]);
   return (
     <PageLayout>
       <section className="py-8 lg:py-12 bg-canvas">
@@ -23,11 +49,6 @@ const Origins = () => {
               <div className="font-serif text-2xl text-ink font-normal mt-1">1947</div>
             </div>
             <div className="tile-connector text-center flex flex-col items-center justify-center">
-              <img
-                src="/founder-saragabani-gopu-1947.jpg"
-                alt="Founder Saragabani Gopu"
-                className="w-12 h-12 rounded-full object-cover border-2 border-[#FF6200] shadow-sm mb-1.5"
-              />
               <div className="text-xs uppercase tracking-wider text-muted-editorial font-medium">Founder & President</div>
               <div className="font-serif text-xl text-ink font-normal mt-0.5">Saragabani Gopu</div>
             </div>
@@ -42,16 +63,16 @@ const Origins = () => {
           <div className="bg-surface-soft border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 mb-12 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-center">
               <div className="md:col-span-5">
-                <div className="rounded-xl overflow-hidden border-2 border-[#FF6200]/30 shadow-md bg-canvas">
+                <div
+                  onClick={() => setShowFounderModal(true)}
+                  className="block rounded-xl overflow-hidden border-2 border-[#FF6200]/30 shadow-md bg-canvas group cursor-pointer hover:border-[#FF6200]/60 transition-colors"
+                  title="Click to view Founder details"
+                >
                   <img
                     src="/founder-saragabani-gopu-1947.jpg"
                     alt="Founder Saragabani Gopu - 1947 Foundation"
-                    className="w-full h-auto object-cover"
+                    className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500"
                   />
-                  <div className="p-3 bg-canvas border-t border-hairline text-center">
-                    <div className="text-xs font-semibold text-[#FF6200] uppercase tracking-wider">Historical Proclamation 1947</div>
-                    <div className="font-serif text-sm text-ink font-medium mt-0.5">Founder Saragabani Gopu</div>
-                  </div>
                 </div>
               </div>
               <div className="md:col-span-7 space-y-4">
@@ -67,11 +88,6 @@ const Origins = () => {
                 <p className="text-sm text-body leading-relaxed">
                   Steering clear of partisan politics, his focus was dedicated to instilling physical fitness, community defense, emergency relief, and ethical leadership among grassroots citizens across states.
                 </p>
-                <div className="pt-2 flex items-center gap-4 text-xs text-muted-editorial font-medium">
-                  <span>• Established 1947</span>
-                  <span>• Non-Political Seva Cadre</span>
-                  <span>• Nationwide Reach</span>
-                </div>
               </div>
             </div>
           </div>
@@ -130,6 +146,96 @@ const Origins = () => {
 
         </div>
       </section>
+
+      {/* Individual Presidential Biography Modal Popup */}
+      {showFounderModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto no-scrollbar animate-in fade-in duration-200"
+          onClick={() => setShowFounderModal(false)}
+        >
+          <div
+            className="relative max-w-4xl w-full max-h-[92vh] sm:max-h-[90vh] bg-surface-card rounded-2xl overflow-y-auto no-scrollbar shadow-2xl border border-hairline p-4 sm:p-7 lg:p-8 my-auto animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Single "Cut" (X) Button to Close */}
+            <button
+              type="button"
+              onClick={() => setShowFounderModal(false)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 w-10 h-10 rounded-full bg-white/95 hover:bg-[#FF6200] text-ink hover:text-white border border-hairline flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 touch-manipulation"
+              title="Close popup"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-center">
+              {/* Photo Column */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center pt-2 sm:pt-0">
+                <div className="relative group w-full max-w-[190px] sm:max-w-[260px] lg:max-w-none rounded-2xl overflow-hidden border-2 border-[#FF6200]/30 shadow-lg bg-surface-card aspect-[2/3]">
+                  <img
+                    src={founder.image}
+                    alt={`${founder.name} - ${founder.role}`}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  />
+                  {/* Badge */}
+                  <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-20 bg-gradient-to-r from-[#FF6200] to-[#FF9933] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 sm:gap-1.5">
+                    <ShieldCheck size={13} />
+                    <span>{founder.badge}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Column */}
+              <div className="lg:col-span-7 space-y-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FF6200]/10 border border-[#FF6200]/25 text-xs font-semibold text-[#FF6200] mb-1.5">
+                    <Landmark size={12} />
+                    <span>{founder.tenure}</span>
+                  </div>
+                  <h3 className="font-serif text-2xl sm:text-3xl text-ink tracking-tight font-semibold">
+                    {founder.name}
+                  </h3>
+                  <div className="text-xs sm:text-sm font-medium text-[#FF6200] mt-0.5">
+                    {founder.role}
+                  </div>
+                  <div className="text-[11px] text-muted-editorial mt-0.5 italic">
+                    {founder.motto}
+                  </div>
+                </div>
+
+                <blockquote className="border-l-4 border-[#FF6200] pl-4 py-2 bg-canvas/80 rounded-r-xl italic font-serif text-sm sm:text-base text-ink leading-relaxed">
+                  "{founder.quote}"
+                  <div className="mt-1.5 text-xs font-sans not-italic text-muted-editorial font-medium">
+                    — {founder.quoteAttribution}
+                  </div>
+                </blockquote>
+
+                <div className="space-y-2 text-body text-xs sm:text-sm leading-relaxed">
+                  <p>{founder.historicalContext}</p>
+                </div>
+
+                <div className="bg-canvas p-4 rounded-xl border border-hairline space-y-2">
+                  <div className="text-xs uppercase tracking-wider text-ink font-semibold flex items-center gap-2">
+                    <Award size={14} className="text-[#FF6200]" />
+                    <span>Tenure Highlights & Achievements</span>
+                  </div>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 text-xs text-body">
+                    {founder.achievements.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
+                        <span className="text-[#FF6200] font-bold mt-0.5">✓</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 };
