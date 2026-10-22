@@ -1035,7 +1035,6 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
 
   // Status Check Portal State
   const [statusQuery, setStatusQuery] = useState(urlQuery);
-  const [statusMobile, setStatusMobile] = useState("");
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [statusResult, setStatusResult] = useState<any>(null);
@@ -1834,28 +1833,68 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     printWindow.document.close();
   };
 
-  const fetchStatus = async (overrideRegId?: string, overrideMobile?: string) => {
-    const regId = (overrideRegId !== undefined ? overrideRegId : statusQuery).trim();
-    const rawMobile = (overrideMobile !== undefined ? overrideMobile : statusMobile).trim();
-
-    if (!regId) {
-      setStatusError("Please enter your Registration ID (e.g. MSD-...).");
-      return;
+  // Helper to normalize phone / registration input and handle paste without truncation
+  const cleanStatusInput = (raw: string): string => {
+    const text = raw.trim();
+    // If it looks like a phone number (contains digits, optional +91, spaces, hyphens)
+    if (/^[\d\s+\-()]+$/.test(text)) {
+      let digits = text.replace(/[\s\-()]/g, "");
+      if (digits.startsWith("+91")) digits = digits.slice(3);
+      if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+      if (digits.startsWith("0") && digits.length === 11) digits = digits.slice(1);
+      // If purely numeric, cap to 10 digits
+      if (/^\d+$/.test(digits)) {
+        return digits.slice(0, 10);
+      }
     }
-    if (!rawMobile) {
-      setStatusError("Please enter your registered 10-digit mobile number.");
+    // Otherwise keep as Registration ID string (e.g. MSD-MH-2026-0001)
+    return text.slice(0, 35);
+  };
+
+  const handleStatusInputChange = (val: string) => {
+    setStatusError("");
+    setStatusQuery(cleanStatusInput(val));
+  };
+
+  const handleStatusPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text") || "";
+    const cleaned = cleanStatusInput(pasted);
+    setStatusQuery(cleaned);
+    setStatusError("");
+  };
+
+  const fetchStatus = async (overrideQuery?: string) => {
+    const raw = (overrideQuery !== undefined ? overrideQuery : statusQuery).trim();
+    if (!raw) {
+      setStatusError("Please enter your Registration ID or 10-digit mobile number.");
       return;
     }
 
     // Clean phone input if formatted with +91, leading 0, spaces, or hyphens
-    let cleanPhone = rawMobile.replace(/[\s\-()]/g, "");
+    let cleanPhone = raw.replace(/[\s\-()]/g, "");
     if (cleanPhone.startsWith("+91")) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith("91") && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(2);
     if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = cleanPhone.slice(1);
 
-    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      setStatusError("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
-      return;
+    const isNumeric = /^\d+$/.test(cleanPhone);
+    let queryParam = raw;
+
+    if (isNumeric) {
+      if (cleanPhone.length !== 10) {
+        setStatusError(`Mobile number must be exactly 10 digits. Received ${cleanPhone.length} digits.`);
+        return;
+      }
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        setStatusError("Must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+        return;
+      }
+      queryParam = cleanPhone;
+    } else {
+      if (raw.length < 4) {
+        setStatusError("Please enter a valid Registration ID (e.g. MSD-...).");
+        return;
+      }
     }
 
     setStatusLoading(true);
@@ -1865,17 +1904,14 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
 
     try {
       const res = await fetch(
-        getApiUrl(
-          `/api/members/status?registrationId=${encodeURIComponent(regId)}&mobile=${encodeURIComponent(cleanPhone)}`
-        )
+        getApiUrl(`/api/members/status?query=${encodeURIComponent(queryParam)}`)
       );
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json.error || "No member application found with the given details.");
       }
 
-      // Merge verified mobile into status result for local receipt generation
-      setStatusResult({ ...json.member, mobile: cleanPhone });
+      setStatusResult(json.member);
 
       // If member is APPROVED, generate QR code for the ID card
       if (json.member.status === "APPROVED") {
@@ -3640,30 +3676,14 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                 }}
                 className="max-w-xl mx-auto mb-8"
               >
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
                     <input
                       type="text"
                       value={statusQuery}
-                      onChange={(e) => {
-                        setStatusQuery(e.target.value);
-                        setStatusError("");
-                      }}
-                      placeholder="Registration ID (e.g. MSD-...)"
-                      className="w-full px-4 py-3 text-sm bg-surface-soft/60 border border-hairline rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6200]/30 font-medium text-ink placeholder:text-muted-editorial/60"
-                    />
-                  </div>
-                  <div className="relative flex-1">
-                    <input
-                      type="tel"
-                      value={statusMobile}
-                      maxLength={10}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        setStatusMobile(val);
-                        setStatusError("");
-                      }}
-                      placeholder="10-digit Mobile Number"
+                      onChange={(e) => handleStatusInputChange(e.target.value)}
+                      onPaste={handleStatusPaste}
+                      placeholder="Enter Registration ID or 10-digit Mobile Number"
                       className="w-full px-4 py-3 text-sm bg-surface-soft/60 border border-hairline rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6200]/30 font-medium text-ink placeholder:text-muted-editorial/60"
                     />
                   </div>

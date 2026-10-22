@@ -592,46 +592,99 @@ const verifyAdminToken = async (req, res) => {
   res.json({ success: true, admin: req.admin });
 };
 
-// ─── 7. Public Status Verification (Dual-key: Registration ID + Mobile) ────────
+// ─── 7. Public Status Verification (By Registration ID or Mobile) ─────────────
 const checkMemberStatus = async (req, res) => {
   try {
-    const registrationId = (req.query.registrationId || "").trim();
-    const mobile = (req.query.mobile || req.query.phone || "").trim();
+    const rawQuery = (req.query.query || req.query.registrationId || req.query.mobile || "").trim();
+    const dualRegId = (req.query.registrationId || "").trim();
+    const dualMobile = (req.query.mobile || req.query.phone || "").trim();
 
-    // Both registrationId and mobile are mandatory
-    if (!registrationId || !mobile) {
-      return res.status(400).json({
-        error: "Both registrationId and mobile number are required to check member status.",
+    // Check if explicitly called with dual keys (both registrationId and mobile)
+    if (dualRegId && dualMobile && !req.query.query) {
+      let cleanDualPhone = dualMobile.replace(/[\s\-()]/g, "");
+      if (cleanDualPhone.startsWith("+91")) cleanDualPhone = cleanDualPhone.slice(3);
+      if (cleanDualPhone.startsWith("91") && cleanDualPhone.length === 12) cleanDualPhone = cleanDualPhone.slice(2);
+      if (cleanDualPhone.startsWith("0") && cleanDualPhone.length === 11) cleanDualPhone = cleanDualPhone.slice(1);
+
+      if (!/^[6-9]\d{9}$/.test(cleanDualPhone)) {
+        return res.status(400).json({ error: "Please enter a valid 10-digit mobile number." });
+      }
+
+      const escapedRegId = escapeRegex(dualRegId);
+      const member = await Member.findOne({
+        registrationId: { $regex: new RegExp(`^${escapedRegId}$`, "i") },
+        mobile: cleanDualPhone,
+      }).lean();
+
+      if (!member) {
+        return res.status(404).json({
+          error: "No member application found matching the provided Registration ID and Mobile Number.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        member: {
+          registrationId: member.registrationId,
+          fullName: member.fullName,
+          status: member.status,
+          wing: member.wing,
+          photoUrl: member.photoUrl,
+          state: member.state,
+          district: member.district,
+          approvedAt: member.approvedAt,
+          createdAt: member.createdAt,
+        },
       });
     }
 
-    // Clean and validate 10-digit mobile
-    let cleanPhone = mobile.replace(/[\s\-()]/g, "");
+    // Single query mode (Mobile or Registration ID)
+    if (!rawQuery) {
+      return res.status(400).json({
+        error: "Please enter your Registration ID or 10-digit Mobile Number.",
+      });
+    }
+
+    // Clean phone input if formatted with +91, leading 0, spaces, or hyphens
+    let cleanPhone = rawQuery.replace(/[\s\-()]/g, "");
     if (cleanPhone.startsWith("+91")) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith("91") && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(2);
     if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = cleanPhone.slice(1);
 
-    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      return res.status(400).json({
-        error: "Please enter a valid 10-digit mobile number.",
-      });
+    const isDigitsOnly = /^\d+$/.test(cleanPhone);
+    if (isDigitsOnly) {
+      if (cleanPhone.length !== 10) {
+        return res.status(400).json({
+          error: `Mobile number must be exactly 10 digits. Received ${cleanPhone.length} digits.`,
+        });
+      }
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        return res.status(400).json({
+          error: "Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.",
+        });
+      }
+    } else {
+      if (rawQuery.length < 3 || rawQuery.length > 50) {
+        return res.status(400).json({
+          error: "Please enter a valid Registration ID.",
+        });
+      }
     }
 
-    if (registrationId.length < 3 || registrationId.length > 50) {
-      return res.status(400).json({
-        error: "Please enter a valid Registration ID.",
-      });
-    }
+    const safeRegexQuery = escapeRegex(rawQuery);
+    let member = null;
 
-    const escapedRegId = escapeRegex(registrationId);
-    const member = await Member.findOne({
-      registrationId: { $regex: new RegExp(`^${escapedRegId}$`, "i") },
-      mobile: cleanPhone,
-    }).lean();
+    if (isDigitsOnly) {
+      member = await Member.findOne({ mobile: cleanPhone }).lean();
+    } else {
+      member = await Member.findOne({
+        registrationId: { $regex: new RegExp(`^${safeRegexQuery}$`, "i") },
+      }).lean();
+    }
 
     if (!member) {
       return res.status(404).json({
-        error: "No member application found matching the provided Registration ID and Mobile Number.",
+        error: "No member application found matching this ID or Mobile Number. Please verify your details.",
       });
     }
 

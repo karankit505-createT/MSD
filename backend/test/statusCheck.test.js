@@ -4,7 +4,7 @@ const http = require("node:http");
 const Member = require("../models/Member");
 const { app } = require("../server");
 
-test("Public status check PII protection and dual-key requirement (F13)", async (t) => {
+test("Public status check PII protection and flexible lookup (F13)", async (t) => {
   let server;
   let baseUrl;
   let originalFindOne;
@@ -27,41 +27,30 @@ test("Public status check PII protection and dual-key requirement (F13)", async 
     await mongoose.disconnect();
   });
 
-  await t.test("rejects request missing registrationId with 400", async () => {
-    const res = await fetch(`${baseUrl}/api/members/status?mobile=9876543210`);
+  await t.test("rejects request missing any search query with 400", async () => {
+    const res = await fetch(`${baseUrl}/api/members/status`);
     assert.strictEqual(res.status, 400);
     const body = await res.json();
-    assert.match(body.error, /Both registrationId and mobile/);
-  });
-
-  await t.test("rejects request missing mobile with 400", async () => {
-    const res = await fetch(`${baseUrl}/api/members/status?registrationId=MSD-MH-2026-0001`);
-    assert.strictEqual(res.status, 400);
-    const body = await res.json();
-    assert.match(body.error, /Both registrationId and mobile/);
+    assert.match(body.error, /Please enter your Registration ID or 10-digit Mobile Number/);
   });
 
   await t.test("rejects invalid mobile number format with 400", async () => {
-    const res = await fetch(
-      `${baseUrl}/api/members/status?registrationId=MSD-MH-2026-0001&mobile=12345`
-    );
+    const res = await fetch(`${baseUrl}/api/members/status?query=12345`);
     assert.strictEqual(res.status, 400);
     const body = await res.json();
-    assert.match(body.error, /valid 10-digit mobile/);
+    assert.match(body.error, /10 digits/);
   });
 
-  await t.test("returns 404 when no member matches the dual key", async () => {
+  await t.test("returns 404 when no member matches the query", async () => {
     Member.findOne = () => ({
       lean: async () => null,
     });
 
-    const res = await fetch(
-      `${baseUrl}/api/members/status?registrationId=MSD-UNKNOWN&mobile=9876543210`
-    );
+    const res = await fetch(`${baseUrl}/api/members/status?query=9876543210`);
     assert.strictEqual(res.status, 404);
   });
 
-  await t.test("returns ONLY public non-sensitive fields when member matches", async () => {
+  await t.test("returns ONLY public non-sensitive fields when member matches by mobile", async () => {
     Member.findOne = () => ({
       lean: async () => ({
         _id: "mongo-id-1234",
@@ -91,9 +80,7 @@ test("Public status check PII protection and dual-key requirement (F13)", async 
       }),
     });
 
-    const res = await fetch(
-      `${baseUrl}/api/members/status?registrationId=MSD-MH-2026-0001&mobile=9876543210`
-    );
+    const res = await fetch(`${baseUrl}/api/members/status?query=9876543210`);
     assert.strictEqual(res.status, 200);
     const body = await res.json();
     assert.strictEqual(body.success, true);
@@ -117,5 +104,23 @@ test("Public status check PII protection and dual-key requirement (F13)", async 
     assert.strictEqual(body.member.idProofNumber, undefined, "ID proof number must not be returned");
     assert.strictEqual(body.member.idProofType, undefined, "ID proof type must not be returned");
     assert.strictEqual(body.member.whatsapp, undefined, "WhatsApp must not be returned");
+  });
+
+  await t.test("returns public verification fields when looked up by registration ID", async () => {
+    Member.findOne = () => ({
+      lean: async () => ({
+        registrationId: "MSD-MH-2026-0001",
+        fullName: "Rahul Patil",
+        status: "APPROVED",
+        wing: "Youth Wing",
+        state: "Maharashtra",
+        district: "Pune",
+      }),
+    });
+
+    const res = await fetch(`${baseUrl}/api/members/status?query=MSD-MH-2026-0001`);
+    assert.strictEqual(res.status, 200);
+    const body = await res.json();
+    assert.strictEqual(body.member.registrationId, "MSD-MH-2026-0001");
   });
 });
