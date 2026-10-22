@@ -31,14 +31,40 @@ const upload = multer({
   },
 });
 
+const rateLimit = require("express-rate-limit");
+
+const isTest =
+  process.env.NODE_ENV === "test" ||
+  Boolean(process.env.NODE_TEST_CONTEXT) ||
+  process.argv.some((arg) => arg.includes("test")) ||
+  Boolean(process.env.VITEST);
+
+// Rate limiter for admin login (10 attempts per 15 minutes)
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 1000 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again after 15 minutes." },
+});
+
+// Rate limiter for public status check (30 requests per 15 minutes)
+const statusCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 1000 : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many status check requests. Please try again after 15 minutes." },
+});
+
 // ─── Public Member Registration & Status Verification ───
 router.post("/register", upload.single("photo"), registerMember);
-router.get("/status", checkMemberStatus);
+router.get("/status", statusCheckLimiter, checkMemberStatus);
 router.get("/proxy-photo", proxyPhoto);
 router.get("/card-settings", getCardSettings);
 
 // ─── Admin Auth ───
-router.post("/admin/login", adminLogin);
+router.post("/admin/login", adminLoginLimiter, adminLogin);
 router.get("/admin/verify", verifyToken, verifyAdminToken);
 
 // ─── Admin Member Management (Protected) ───

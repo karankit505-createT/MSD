@@ -323,8 +323,13 @@ const Admin = () => {
     try {
       const formData = new FormData();
       formData.append("image", file);
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
+        headers,
         body: formData,
       });
       const data = await res.json();
@@ -350,8 +355,13 @@ const Admin = () => {
     try {
       const formData = new FormData();
       formData.append("image", file);
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
+        headers,
         body: formData,
       });
       const data = await res.json();

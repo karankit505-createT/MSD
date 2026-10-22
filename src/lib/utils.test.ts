@@ -8,7 +8,8 @@ describe("cn utility", () => {
   });
 
   it("should handle conditional and falsy class names", () => {
-    const result = cn("always", false && "never", null, undefined, "sometimes");
+    const isHidden = false;
+    const result = cn("always", isHidden && "never", null, undefined, "sometimes");
     expect(result).toBe("always sometimes");
   });
 

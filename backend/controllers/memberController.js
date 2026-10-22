@@ -1,41 +1,41 @@
 const mongoose = require("mongoose");
 const Member = require("../models/Member");
+const CardSetting = require("../models/CardSetting");
 const cloudinary = require("../config/cloudinary");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const ADMIN_USER = process.env.ADMIN_USERNAME;
-const ADMIN_PASS = process.env.ADMIN_PASSWORD;
+// Constant-time string comparison to prevent timing attacks
+const safeCompare = (a, b) => {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const hashA = crypto.createHash("sha256").update(a).digest();
+  const hashB = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+};
+
+// Escape special regex characters to prevent ReDoS and regex injection
+const escapeRegex = (str) => {
+  if (typeof str !== "string") return "";
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
 
 // Local MongoDB sync backup file path
 const DATA_FILE_PATH = path.join(__dirname, "../data/members_mongodb_data.json");
 
-// Helper to write all MongoDB members into local JSON backup file
+// Helper to write all MongoDB members into local JSON backup file (optional local dev only)
 const syncToLocalBackupFile = async () => {
+  if (process.env.ENABLE_LOCAL_BACKUP !== "true") return;
   try {
     const allMembers = await Member.find({}).sort({ createdAt: -1 });
-    fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(allMembers, null, 2), "utf8");
+    await fs.promises.writeFile(DATA_FILE_PATH, JSON.stringify(allMembers, null, 2), "utf8");
     console.log(`📁 MongoDB data synced to local file: ${DATA_FILE_PATH} (${allMembers.length} records)`);
   } catch (err) {
-    console.error("Warning: Failed to sync MongoDB data to file:", err.message);
+    console.warn("Warning: Failed to sync MongoDB data to file:", err.message);
   }
 };
-
-// Initial sync on module load (skip in test environments)
-const isTestEnv =
-  process.env.NODE_ENV === "test" ||
-  Boolean(process.env.NODE_TEST_CONTEXT) ||
-  process.argv.some((arg) => arg.includes("test")) ||
-  Boolean(process.env.VITEST);
-
-if (!isTestEnv) {
-  setTimeout(() => {
-    syncToLocalBackupFile().catch(() => {});
-  }, 3000);
-}
 
 // State Code Mapping Helper (All 28 States & 8 Union Territories)
 const getStateCode = (stateName) => {
@@ -398,7 +398,10 @@ const registerMember = async (req, res) => {
 // ─── 2. Get All Members (Admin with Filters & Search) ─────────────────────────
 const getAllMembers = async (req, res) => {
   try {
-    const { search, state, wing, status, page = 1, limit = 50 } = req.query;
+    const { search, state, wing, status, page, limit } = req.query;
+
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
 
     const query = {};
 
@@ -411,8 +414,10 @@ const getAllMembers = async (req, res) => {
     if (wing && wing !== "ALL") {
       query.wing = wing;
     }
-    if (search && search.trim() !== "") {
-      const regex = new RegExp(search.trim(), "i");
+    if (search && typeof search === "string" && search.trim() !== "") {
+      const cleanSearch = search.trim().slice(0, 100);
+      const escaped = escapeRegex(cleanSearch);
+      const regex = new RegExp(escaped, "i");
       query.$or = [
         { fullName: regex },
         { mobile: regex },
@@ -424,8 +429,8 @@ const getAllMembers = async (req, res) => {
 
     const members = await Member.find(query)
       .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .skip((parsedPage - 1) * parsedLimit)
+      .limit(parsedLimit);
 
     const totalCount = await Member.countDocuments(query);
 
@@ -550,21 +555,24 @@ const exportMembersJson = async (req, res) => {
 // ─── 6. Admin Authentication (Login & Check) ─────────────────────────────────
 const adminLogin = async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const adminUser = process.env.ADMIN_USERNAME || ADMIN_USER;
-    const adminPass = process.env.ADMIN_PASSWORD || ADMIN_PASS;
-    const jwtSecret = process.env.JWT_SECRET || JWT_SECRET;
+    const { username, password } = req.body || {};
+    const adminUser = process.env.ADMIN_USERNAME;
+    const adminPass = process.env.ADMIN_PASSWORD;
+    const jwtSecret = process.env.JWT_SECRET;
 
     if (!adminUser || !adminPass || !jwtSecret) {
       console.error("Admin credentials or JWT_SECRET are not configured in environment variables.");
       return res.status(500).json({ error: "Server authentication is not properly configured." });
     }
 
-    if (username === adminUser && password === adminPass) {
+    const usernameMatch = safeCompare(username, adminUser);
+    const passwordMatch = safeCompare(password, adminPass);
+
+    if (usernameMatch && passwordMatch) {
       const token = jwt.sign(
         { username: adminUser, role: "admin" },
         jwtSecret,
-        { expiresIn: "7d" }
+        { expiresIn: "24h" }
       );
       return res.json({
         success: true,
@@ -584,90 +592,62 @@ const verifyAdminToken = async (req, res) => {
   res.json({ success: true, admin: req.admin });
 };
 
-// ─── 7. Public Status Verification (By Registration ID or Mobile) ─────────────
+// ─── 7. Public Status Verification (Dual-key: Registration ID + Mobile) ────────
 const checkMemberStatus = async (req, res) => {
   try {
-    const rawQuery = (req.query.query || "").trim();
-    if (!rawQuery) {
-      return res.status(400).json({ error: "Please enter your Registration ID or 10-digit Mobile Number." });
+    const registrationId = (req.query.registrationId || "").trim();
+    const mobile = (req.query.mobile || req.query.phone || "").trim();
+
+    // Both registrationId and mobile are mandatory
+    if (!registrationId || !mobile) {
+      return res.status(400).json({
+        error: "Both registrationId and mobile number are required to check member status.",
+      });
     }
 
-    // Normalize phone input if formatted with +91, leading 0, spaces, or hyphens
-    let cleanPhone = rawQuery.replace(/[\s\-\(\)]/g, "");
+    // Clean and validate 10-digit mobile
+    let cleanPhone = mobile.replace(/[\s\-()]/g, "");
     if (cleanPhone.startsWith("+91")) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith("91") && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(2);
     if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = cleanPhone.slice(1);
 
-    const isDigitsOnly = /^\d+$/.test(cleanPhone);
-    if (isDigitsOnly) {
-      if (cleanPhone.length !== 10) {
-        return res.status(400).json({
-          error: `Mobile number must be exactly 10 digits. Received ${cleanPhone.length} digits.`,
-        });
-      }
-      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-        return res.status(400).json({
-          error: "Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.",
-        });
-      }
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      return res.status(400).json({
+        error: "Please enter a valid 10-digit mobile number.",
+      });
     }
 
-    const safeRegexQuery = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    let member = null;
-    try {
-      member = await Member.findOne({
-        $or: [
-          { registrationId: { $regex: new RegExp(`^${safeRegexQuery}$`, "i") } },
-          { mobile: isDigitsOnly ? cleanPhone : rawQuery },
-          { mobile: cleanPhone },
-        ],
+    if (registrationId.length < 3 || registrationId.length > 50) {
+      return res.status(400).json({
+        error: "Please enter a valid Registration ID.",
       });
-    } catch (dbErr) {
-      console.warn("MongoDB query failed, checking local backup JSON:", dbErr.message);
-      if (fs.existsSync(DATA_FILE_PATH)) {
-        try {
-          const localList = JSON.parse(fs.readFileSync(DATA_FILE_PATH, "utf8"));
-          const searchVal = isDigitsOnly ? cleanPhone : rawQuery.toLowerCase();
-          member = localList.find((m) => {
-            const mReg = (m.registrationId || "").toLowerCase();
-            const mMobile = (m.mobile || "").replace(/[\s\-\+]/g, "");
-            return mReg === searchVal || mMobile === searchVal || mMobile.endsWith(searchVal);
-          });
-        } catch (fErr) {}
-      }
     }
+
+    const escapedRegId = escapeRegex(registrationId);
+    const member = await Member.findOne({
+      registrationId: { $regex: new RegExp(`^${escapedRegId}$`, "i") },
+      mobile: cleanPhone,
+    }).lean();
 
     if (!member) {
       return res.status(404).json({
-        error: "No member application found matching this ID or Mobile Number. Please verify your details.",
+        error: "No member application found matching the provided Registration ID and Mobile Number.",
       });
     }
 
+    // Return strictly non-sensitive fields to protect applicant PII
     return res.json({
       success: true,
       member: {
-        _id: member._id,
         registrationId: member.registrationId,
         fullName: member.fullName,
-        fatherName: member.fatherName,
-        dob: member.dob,
-        age: member.age,
-        gender: member.gender,
-        mobile: member.mobile,
-        whatsapp: member.whatsapp,
-        email: member.email,
-        bloodGroup: member.bloodGroup,
+        status: member.status,
+        wing: member.wing,
         photoUrl: member.photoUrl,
         state: member.state,
         district: member.district,
-        taluk: member.taluk,
-        address: member.address,
-        pincode: member.pincode,
-        wing: member.wing,
-        profession: member.profession,
-        status: member.status,
-        createdAt: member.createdAt,
         approvedAt: member.approvedAt,
+        createdAt: member.createdAt,
       },
     });
   } catch (error) {
@@ -676,55 +656,165 @@ const checkMemberStatus = async (req, res) => {
   }
 };
 
-// ─── 8. Safe Image Proxy for PVC Card Generation (Zero CORS issues) ───────────
+// ─── 8. Safe Image Proxy for PVC Card Generation (Zero CORS issues, SSRF Protected) ───
 const https = require("https");
-const http = require("http");
+
+const ALLOWED_PHOTO_HOSTS = new Set([
+  "res.cloudinary.com",
+  ...(process.env.ALLOWED_PHOTO_HOSTS
+    ? process.env.ALLOWED_PHOTO_HOSTS.split(",").map((h) => h.trim().toLowerCase())
+    : []),
+]);
+
+function validatePhotoUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== "string") {
+    return { valid: false, reason: "No image URL provided" };
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    return { valid: false, reason: "Invalid URL" };
+  }
+
+  if (parsed.protocol !== "https:") {
+    return { valid: false, reason: "Only HTTPS URLs are allowed" };
+  }
+
+  if (parsed.username || parsed.password) {
+    return { valid: false, reason: "URLs with credentials are not allowed" };
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Reject localhost, private ranges, link-local metadata (169.254.169.254), and raw IPs
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    /^(?:127\.|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname) ||
+    /^::1$|^fe80:/i.test(hostname) ||
+    /^[0-9.]+$/.test(hostname)
+  ) {
+    return { valid: false, reason: "Host not allowed" };
+  }
+
+  if (!ALLOWED_PHOTO_HOSTS.has(hostname)) {
+    return { valid: false, reason: `Host ${hostname} is not permitted` };
+  }
+
+  return { valid: true, parsed };
+}
 
 const proxyPhoto = (req, res) => {
   const imageUrl = req.query.url;
-  if (!imageUrl) {
-    return res.status(400).send("No image URL provided");
+  const validation = validatePhotoUrl(imageUrl);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.reason });
   }
 
-  try {
-    const client = imageUrl.startsWith("https") ? https : http;
-    client
-      .get(imageUrl, (upstreamRes) => {
-        if (upstreamRes.statusCode !== 200) {
-          return res.status(upstreamRes.statusCode).send("Failed to load upstream photo");
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  let downloadedBytes = 0;
+
+  const request = https.get(
+    validation.parsed,
+    { timeout: 5000 },
+    (upstreamRes) => {
+      // Disallow redirects to prevent open-redirect SSRF
+      if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400) {
+        upstreamRes.resume();
+        return res.status(400).json({ error: "Redirects are not permitted for image proxy" });
+      }
+
+      if (upstreamRes.statusCode !== 200) {
+        upstreamRes.resume();
+        return res.status(upstreamRes.statusCode).json({ error: "Failed to load upstream photo" });
+      }
+
+      const contentType = (upstreamRes.headers["content-type"] || "").toLowerCase();
+      if (!contentType.startsWith("image/")) {
+        upstreamRes.resume();
+        return res.status(400).json({ error: "Upstream content is not an image" });
+      }
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+
+      upstreamRes.on("data", (chunk) => {
+        downloadedBytes += chunk.length;
+        if (downloadedBytes > MAX_SIZE) {
+          request.destroy();
+          upstreamRes.destroy();
+          if (!res.headersSent) {
+            return res.status(413).json({ error: "Image exceeds 10MB limit" });
+          }
+          res.end();
+        } else {
+          res.write(chunk);
         }
-        res.setHeader("Content-Type", upstreamRes.headers["content-type"] || "image/jpeg");
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        res.setHeader("Cache-Control", "public, max-age=86400");
-        upstreamRes.pipe(res);
-      })
-      .on("error", (err) => {
-        console.error("Proxy Photo Error:", err.message);
-        res.status(500).send("Proxy error: " + err.message);
       });
-  } catch (err) {
-    console.error("Proxy Photo Exception:", err.message);
-    res.status(500).send("Internal server error");
-  }
+
+      upstreamRes.on("end", () => {
+        res.end();
+      });
+
+      upstreamRes.on("error", (err) => {
+        console.error("Upstream stream error:", err.message);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Stream error" });
+        }
+        res.end();
+      });
+    }
+  );
+
+  request.on("timeout", () => {
+    request.destroy();
+    if (!res.headersSent) {
+      return res.status(504).json({ error: "Upstream photo request timed out" });
+    }
+  });
+
+  request.on("error", (err) => {
+    console.error("Proxy Photo Request Error:", err.message);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: "Proxy connection error: " + err.message });
+    }
+  });
 };
 
 // ─── 9. Card Seal & Signature Settings ─────────────────────────────────────
-const CARD_SETTINGS_FILE = path.join(__dirname, "../data/card_settings.json");
+const DEFAULT_CARD_SETTINGS = {
+  customSealUrl: "",
+  customSignatureUrl: "",
+  signatoryName: "Authorized Signatory",
+  signatoryTitle: "Central Executive Committee",
+};
 
 const getCardSettings = async (req, res) => {
   try {
-    if (fs.existsSync(CARD_SETTINGS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(CARD_SETTINGS_FILE, "utf8"));
-      return res.json({ success: true, settings: data });
+    const settingsDoc = await CardSetting.findOne({ key: "default" }).lean();
+    if (!settingsDoc) {
+      return res.json({
+        success: true,
+        settings: {
+          ...DEFAULT_CARD_SETTINGS,
+          updatedAt: new Date().toISOString(),
+        },
+      });
     }
-    const defaultSettings = {
-      customSealUrl: "",
-      customSignatureUrl: "",
-      signatoryName: "Authorized Signatory",
-      signatoryTitle: "Central Executive Committee",
-    };
-    fs.writeFileSync(CARD_SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2), "utf8");
-    return res.json({ success: true, settings: defaultSettings });
+    return res.json({
+      success: true,
+      settings: {
+        customSealUrl: settingsDoc.customSealUrl || "",
+        customSignatureUrl: settingsDoc.customSignatureUrl || "",
+        signatoryName: settingsDoc.signatoryName || DEFAULT_CARD_SETTINGS.signatoryName,
+        signatoryTitle: settingsDoc.signatoryTitle || DEFAULT_CARD_SETTINGS.signatoryTitle,
+        updatedAt: settingsDoc.updatedAt || new Date().toISOString(),
+      },
+    });
   } catch (err) {
     console.error("Get Card Settings Error:", err);
     res.status(500).json({ error: "Failed to load card settings." });
@@ -734,30 +824,36 @@ const getCardSettings = async (req, res) => {
 const updateCardSettings = async (req, res) => {
   try {
     const { customSealUrl, customSignatureUrl, signatoryName, signatoryTitle } = req.body;
-    let currentSettings = {
-      customSealUrl: "",
-      customSignatureUrl: "",
-      signatoryName: "Authorized Signatory",
-      signatoryTitle: "Central Executive Committee",
-    };
-    if (fs.existsSync(CARD_SETTINGS_FILE)) {
-      try {
-        currentSettings = JSON.parse(fs.readFileSync(CARD_SETTINGS_FILE, "utf8"));
-      } catch (e) {}
+    if (signatoryName !== undefined && typeof signatoryName !== "string") {
+      return res.status(400).json({ error: "Invalid signatoryName: must be a string." });
+    }
+    if (signatoryTitle !== undefined && typeof signatoryTitle !== "string") {
+      return res.status(400).json({ error: "Invalid signatoryTitle: must be a string." });
     }
 
-    const updated = {
-      customSealUrl: customSealUrl !== undefined ? customSealUrl : currentSettings.customSealUrl,
-      customSignatureUrl: customSignatureUrl !== undefined ? customSignatureUrl : currentSettings.customSignatureUrl,
-      signatoryName: signatoryName !== undefined ? signatoryName : currentSettings.signatoryName,
-      signatoryTitle: signatoryTitle !== undefined ? signatoryTitle : currentSettings.signatoryTitle,
+    const updateFields = {
       updatedAt: new Date().toISOString(),
     };
+    if (customSealUrl !== undefined) updateFields.customSealUrl = String(customSealUrl);
+    if (customSignatureUrl !== undefined) updateFields.customSignatureUrl = String(customSignatureUrl);
+    if (signatoryName !== undefined) updateFields.signatoryName = String(signatoryName).trim();
+    if (signatoryTitle !== undefined) updateFields.signatoryTitle = String(signatoryTitle).trim();
 
-    fs.writeFileSync(CARD_SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf8");
+    const updated = await CardSetting.findOneAndUpdate(
+      { key: "default" },
+      { $set: updateFields, $setOnInsert: { key: "default" } },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
+    ).lean();
+
     return res.json({
       success: true,
-      settings: updated,
+      settings: {
+        customSealUrl: updated.customSealUrl || "",
+        customSignatureUrl: updated.customSignatureUrl || "",
+        signatoryName: updated.signatoryName || DEFAULT_CARD_SETTINGS.signatoryName,
+        signatoryTitle: updated.signatoryTitle || DEFAULT_CARD_SETTINGS.signatoryTitle,
+        updatedAt: updated.updatedAt,
+      },
       message: "Card seal and signature settings updated successfully.",
     });
   } catch (err) {
@@ -779,6 +875,9 @@ module.exports = {
   getCardSettings,
   updateCardSettings,
   getStateCode,
+  validatePhotoUrl,
+  safeCompare,
+  escapeRegex,
 };
 
 

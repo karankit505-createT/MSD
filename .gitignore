@@ -25,5 +25,14 @@ dist-ssr
 
 # Environment variables — never push secrets!
 .env
+.env.*
+!.env.example
 backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Local data backups containing potential PII or local settings
+backend/data/members_mongodb_data.json
+backend/data/card_settings.json
 vite.config.ts.timestamp-*
+

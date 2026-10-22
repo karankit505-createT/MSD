@@ -1,12 +1,27 @@
-import { describe, it, expect } from "vitest";
-import { API_BASE_URL, getApiUrl } from "./api";
+import { describe, it, expect, vi } from "vitest";
+import { API_BASE_URL, getApiUrl, resolveApiBaseUrl } from "./api";
 
 describe("api configuration", () => {
-  it("should have a valid API_BASE_URL", () => {
-    expect(API_BASE_URL).toBeDefined();
-    expect(typeof API_BASE_URL).toBe("string");
-    expect(API_BASE_URL.length).toBeGreaterThan(0);
-    expect(API_BASE_URL.endsWith("/")).toBe(false);
+  describe("resolveApiBaseUrl", () => {
+    it("should return localhost:5000 in development when no env var is set", () => {
+      const url = resolveApiBaseUrl("", true);
+      expect(url).toBe("http://localhost:5000");
+    });
+
+    it("should return the configured environment URL in production", () => {
+      const url = resolveApiBaseUrl("https://api.mahasevadal.org/", false);
+      expect(url).toBe("https://api.mahasevadal.org");
+    });
+
+    it("should fail loudly and return empty string in production when VITE_API_URL is missing", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const url = resolveApiBaseUrl("", false);
+      expect(url).toBe("");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("VITE_API_URL environment variable is not defined")
+      );
+      consoleSpy.mockRestore();
+    });
   });
 
   describe("getApiUrl", () => {
@@ -26,3 +41,4 @@ describe("api configuration", () => {
     });
   });
 });
+
