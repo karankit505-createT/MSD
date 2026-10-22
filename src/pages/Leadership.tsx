@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Award, Landmark, X } from "lucide-react";
+import { ArrowRight, Award, Landmark, X } from "lucide-react";
 
 export interface PresidentData {
   id: string;
@@ -318,11 +318,6 @@ const Leadership = () => {
                     alt={`${activeBiography.name} - ${activeBiography.role}`}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                   />
-                  {/* Badge */}
-                  <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-20 bg-gradient-to-r from-[#FF6200] to-[#FF9933] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 sm:gap-1.5">
-                    <ShieldCheck size={13} />
-                    <span>{activeBiography.badge}</span>
-                  </div>
                 </div>
               </div>
 

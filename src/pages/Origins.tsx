@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, MapPin, ShieldCheck, Award, Landmark, X } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, Award, Landmark, X } from "lucide-react";
 import { PRESIDENTS } from "./Leadership";
 
 const Origins = () => {
@@ -180,11 +180,6 @@ const Origins = () => {
                     alt={`${founder.name} - ${founder.role}`}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                   />
-                  {/* Badge */}
-                  <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-20 bg-gradient-to-r from-[#FF6200] to-[#FF9933] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 sm:gap-1.5">
-                    <ShieldCheck size={13} />
-                    <span>{founder.badge}</span>
-                  </div>
                 </div>
               </div>
 
