@@ -1545,31 +1545,16 @@ export const generateIdCardBackCanvas = async (
       month: "short",
       year: "numeric",
     });
-    const expDate = new Date(
-      new Date(rawDate).setFullYear(new Date(rawDate).getFullYear() + 5)
-    ).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
     ctx.fillStyle = "#777064";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("DATE OF ISSUE:", 430, 995);
+    ctx.fillText("DATE OF ISSUE:", 430, 1005);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 15px Courier, monospace";
-    ctx.fillText(issueDate, 560, 995);
-
-    ctx.fillStyle = "#777064";
-    ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("VALID UNTIL:", 430, 1030);
-    ctx.fillStyle = "#138808";
-    ctx.font = "bold 15px Courier, monospace";
-    ctx.fillText(`${expDate} (5 YRS)`, 560, 1030);
+    ctx.fillText(issueDate, 560, 1005);
 
     ctx.fillStyle = "#FF6200";
     ctx.font = "bold 12.5px Arial, sans-serif";
-    ctx.fillText("CENTRAL EXECUTIVE COMMITTEE", 430, 1065);
+    ctx.fillText("CENTRAL EXECUTIVE COMMITTEE", 430, 1045);
 
     // 9. Bottom Dark Security Band (Only Saffron Text)
     ctx.fillStyle = "#2c2824";
@@ -1771,13 +1756,6 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
 
   const rawDate = member.approvedAt || member.createdAt || new Date().toISOString();
   const issueDate = new Date(rawDate).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const validUntilDate = new Date(
-    new Date(rawDate).setFullYear(new Date(rawDate).getFullYear() + 5)
-  ).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -2284,9 +2262,6 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                   <div className="text-right space-y-0.5">
                     <div className="text-[7px] text-muted-editorial">
                       ISSUED: <span className="font-mono font-bold text-ink">{issueDate}</span>
-                    </div>
-                    <div className="text-[7px] text-muted-editorial">
-                      VALID THRU: <span className="font-mono font-bold text-emerald-700">{validUntilDate}</span>
                     </div>
                     <div className="text-[6.5px] font-bold text-[#FF6200] uppercase tracking-tight">
                       Central Exec. Committee
