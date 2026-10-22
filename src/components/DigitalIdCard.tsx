@@ -1853,22 +1853,22 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
       <div
         className={`flex ${
           stacked ? "flex-col" : "flex-col lg:flex-row"
-        } items-stretch justify-center gap-6 lg:gap-8 max-w-full w-full`}
+        } items-center lg:items-stretch justify-center gap-6 lg:gap-8 max-w-full w-full`}
       >
         {/* ══════════════ 1. FRONT SIDE ══════════════ */}
         {(activeView === "both" || activeView === "front") && (
-          <div className="flex flex-col items-center flex-1 max-w-[394px]">
+          <div className="flex flex-col items-center flex-1 w-full max-w-[360px] sm:max-w-[394px]">
           {/* Front Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-[min(330px,calc(100vw-36px))] sm:w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+          <div className="flex items-center justify-center gap-1.5 w-full max-w-[344px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
             <ShieldCheck size={14} />
             <span>FRONT SIDE</span>
           </div>
 
           {/* Physical PVC Card Container - Front */}
-          <div className="p-2 sm:p-3 bg-surface-soft/60 rounded-3xl border border-hairline shadow-inner max-w-full h-full flex flex-col justify-center">
+          <div className="p-1 sm:p-2.5 bg-surface-soft/60 rounded-2xl sm:rounded-3xl border border-hairline shadow-inner w-full max-w-[356px] sm:max-w-[394px] flex flex-col justify-center items-center">
             <div
               id="msd-pvc-card-front"
-              className="w-[min(330px,calc(100vw-36px))] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-full max-w-[344px] sm:max-w-[370px] min-h-[500px] sm:h-[560px] flex flex-col justify-between bg-white rounded-xl sm:rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",
@@ -2109,18 +2109,18 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
 
         {/* ══════════════ 2. BACK SIDE ══════════════ */}
         {(activeView === "both" || activeView === "back") && (
-          <div className="flex flex-col items-center flex-1 max-w-[394px]">
+          <div className="flex flex-col items-center flex-1 w-full max-w-[360px] sm:max-w-[394px]">
           {/* Back Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-[min(330px,calc(100vw-36px))] sm:w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+          <div className="flex items-center justify-center gap-1.5 w-full max-w-[344px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
             <FileText size={14} />
             <span>BACK SIDE</span>
           </div>
 
           {/* Physical PVC Card Container - Back */}
-          <div className="p-2 sm:p-3 bg-surface-soft/60 rounded-3xl border border-hairline shadow-inner max-w-full h-full flex flex-col justify-center">
+          <div className="p-1 sm:p-2.5 bg-surface-soft/60 rounded-2xl sm:rounded-3xl border border-hairline shadow-inner w-full max-w-[356px] sm:max-w-[394px] flex flex-col justify-center items-center">
             <div
               id="msd-pvc-card-back"
-              className="w-[min(330px,calc(100vw-36px))] sm:w-[370px] h-[530px] sm:h-[560px] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-full max-w-[344px] sm:max-w-[370px] min-h-[500px] sm:h-[560px] flex flex-col justify-between bg-white rounded-xl sm:rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",
@@ -2284,13 +2284,13 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
 
       {/* ─── ACTION BUTTONS (DOWNLOAD PDF & IMAGES) ─── */}
       {!hideActionButtons && (
-        <div className="flex flex-col gap-3 w-full max-w-xl mt-6">
+        <div className="flex flex-col gap-3 w-full max-w-[356px] sm:max-w-xl mt-6">
           {/* Card Dimensions Badge */}
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-editorial bg-[#faf7ee] px-4 py-2 rounded-xl border border-[#e5dac8] shadow-2xs">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-editorial bg-[#faf7ee] px-3 sm:px-4 py-2 rounded-xl border border-[#e5dac8] shadow-2xs text-center">
             <span className="font-bold text-[#FF6200]">Card Dimensions:</span>
             <span className="font-mono font-bold text-ink">70 mm × 100 mm (2.63" × 3.88")</span>
-            <span className="text-muted-editorial/40">•</span>
-            <span className="text-[11px]">Standard PVC ID Holder & Lamination Pouch Size</span>
+            <span className="text-muted-editorial/40 hidden sm:inline">•</span>
+            <span className="text-[11px] block sm:inline">Standard PVC ID Holder & Lamination Pouch Size</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

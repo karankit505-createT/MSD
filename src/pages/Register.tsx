@@ -2340,7 +2340,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
   return (
     <PageLayout>
       <section className={`${registeredMember ? "py-4 sm:py-6" : "py-8 lg:py-14"} bg-canvas min-h-screen`}>
-        <div className={`${activeTab === "status" ? "max-w-5xl" : "max-w-4xl"} mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300`}>
+        <div className={`${activeTab === "status" ? "max-w-5xl" : "max-w-4xl"} mx-auto px-3 sm:px-6 lg:px-8 transition-all duration-300`}>
           {!registeredMember && (
             <>
               <PageHeader
@@ -3653,7 +3653,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
           )
         ) : (
             /* Check Status & Download ID Card Portal */
-            <div className="card-feature-cream bg-white border border-hairline shadow-lg rounded-2xl p-6 sm:p-10 animate-fade-in">
+            <div className="card-feature-cream bg-white border border-hairline shadow-lg rounded-2xl p-3.5 sm:p-6 lg:p-10 animate-fade-in overflow-hidden">
               {/* Portal Header */}
               <div className="text-center max-w-xl mx-auto mb-8">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF6200]/10 text-[#FF6200] mb-3">
@@ -3827,7 +3827,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                   {statusResult.status === "APPROVED" && (
                     <div className="space-y-6">
                       {/* Approval Banner */}
-                      <div className="flex items-start gap-4 text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                      <div className="flex items-start gap-3 sm:gap-4 text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 sm:p-5">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 border border-emerald-300">
                           <ShieldCheck size={22} />
                         </div>
@@ -3847,8 +3847,13 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                       </div>
 
                       {/* Official PVC Digital Identity Card with Download & Print Options */}
-                      <div className="flex justify-center pt-2">
-                        <DigitalIdCard member={statusResult} qrDataUrl={statusQrUrl} />
+                      <div className="flex justify-center pt-2 w-full max-w-full overflow-hidden">
+                        <DigitalIdCard
+                          member={statusResult}
+                          qrDataUrl={statusQrUrl}
+                          showViewToggle={true}
+                          defaultView="both"
+                        />
                       </div>
                     </div>
                   )}
