@@ -1405,7 +1405,7 @@ export const generateIdCardBackCanvas = async (
     ctx.fillText("FATHER'S / HUSBAND'S NAME", 60, 245);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 20px Georgia, serif";
-    ctx.fillText(member.fatherName ? `Sh. ${member.fatherName}` : "—", 60, 275);
+    ctx.fillText(member.fatherName || "—", 60, 275);
 
     // DOB & Age
     ctx.fillStyle = "#8a8174";
@@ -2198,7 +2198,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                         Father's / Husband's Name
                       </span>
                       <span className="font-bold text-ink truncate block">
-                        {member.fatherName ? `Sh. ${member.fatherName}` : "—"}
+                        {member.fatherName || "—"}
                       </span>
                     </div>
                     <div>
