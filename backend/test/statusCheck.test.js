@@ -86,24 +86,30 @@ test("Public status check PII protection and flexible lookup (F13)", async (t) =
     assert.strictEqual(body.success, true);
     assert.ok(body.member);
 
-    // Public allowed fields
+    // Card and receipt fields required for PVC Digital ID card generation
     assert.strictEqual(body.member.registrationId, "MSD-MH-2026-0001");
     assert.strictEqual(body.member.fullName, "Rahul Patil");
+    assert.strictEqual(body.member.fatherName, "Suresh Patil");
+    assert.strictEqual(body.member.dob, "1990-05-15");
+    assert.strictEqual(body.member.age, 34);
+    assert.strictEqual(body.member.gender, "Male");
+    assert.strictEqual(body.member.mobile, "9876543210");
+    assert.strictEqual(body.member.whatsapp, "9876543210");
+    assert.strictEqual(body.member.email, "rahul@secret.com");
+    assert.strictEqual(body.member.bloodGroup, "O+");
+    assert.strictEqual(body.member.address, "123 Private Street, Flat 402");
+    assert.strictEqual(body.member.taluk, "Haveli");
+    assert.strictEqual(body.member.pincode, "411001");
     assert.strictEqual(body.member.status, "APPROVED");
     assert.strictEqual(body.member.wing, "Youth Wing");
     assert.strictEqual(body.member.state, "Maharashtra");
     assert.strictEqual(body.member.district, "Pune");
 
-    // Strictly stripped PII fields
-    assert.strictEqual(body.member.address, undefined, "Address must not be returned");
-    assert.strictEqual(body.member.pincode, undefined, "Pincode must not be returned");
-    assert.strictEqual(body.member.mobile, undefined, "Mobile must not be returned in public response");
-    assert.strictEqual(body.member.email, undefined, "Email must not be returned in public response");
-    assert.strictEqual(body.member.dob, undefined, "DOB must not be returned");
-    assert.strictEqual(body.member.fatherName, undefined, "Father name must not be returned");
+    // Strictly stripped confidential fields (government ID proof and internal notes)
     assert.strictEqual(body.member.idProofNumber, undefined, "ID proof number must not be returned");
     assert.strictEqual(body.member.idProofType, undefined, "ID proof type must not be returned");
-    assert.strictEqual(body.member.whatsapp, undefined, "WhatsApp must not be returned");
+    assert.strictEqual(body.member.adminNotes, undefined, "Admin notes must not be returned");
+    assert.strictEqual(body.member._id, undefined, "Internal Mongo ID must not be returned");
   });
 
   await t.test("returns public verification fields when looked up by registration ID", async () => {

@@ -592,6 +592,31 @@ const verifyAdminToken = async (req, res) => {
   res.json({ success: true, admin: req.admin });
 };
 
+// Helper to format member particulars for Digital PVC Card & Acknowledgment Receipt
+const formatMemberCardData = (member) => ({
+  registrationId: member.registrationId,
+  fullName: member.fullName,
+  fatherName: member.fatherName || "",
+  dob: member.dob || "",
+  age: member.age || null,
+  gender: member.gender || "Male",
+  mobile: member.mobile || "",
+  whatsapp: member.whatsapp || member.mobile || "",
+  email: member.email || "",
+  bloodGroup: member.bloodGroup || "Not Specified",
+  photoUrl: member.photoUrl || "",
+  state: member.state || "",
+  district: member.district || "",
+  taluk: member.taluk || "",
+  address: member.address || "",
+  pincode: member.pincode || "",
+  wing: member.wing || "",
+  profession: member.profession || "",
+  status: member.status,
+  approvedAt: member.approvedAt || null,
+  createdAt: member.createdAt || null,
+});
+
 // ─── 7. Public Status Verification (By Registration ID or Mobile) ─────────────
 const checkMemberStatus = async (req, res) => {
   try {
@@ -624,17 +649,7 @@ const checkMemberStatus = async (req, res) => {
 
       return res.json({
         success: true,
-        member: {
-          registrationId: member.registrationId,
-          fullName: member.fullName,
-          status: member.status,
-          wing: member.wing,
-          photoUrl: member.photoUrl,
-          state: member.state,
-          district: member.district,
-          approvedAt: member.approvedAt,
-          createdAt: member.createdAt,
-        },
+        member: formatMemberCardData(member),
       });
     }
 
@@ -688,20 +703,10 @@ const checkMemberStatus = async (req, res) => {
       });
     }
 
-    // Return strictly non-sensitive fields to protect applicant PII
+    // Return card and verification particulars (omits government ID proof & admin notes)
     return res.json({
       success: true,
-      member: {
-        registrationId: member.registrationId,
-        fullName: member.fullName,
-        status: member.status,
-        wing: member.wing,
-        photoUrl: member.photoUrl,
-        state: member.state,
-        district: member.district,
-        approvedAt: member.approvedAt,
-        createdAt: member.createdAt,
-      },
+      member: formatMemberCardData(member),
     });
   } catch (error) {
     console.error("Status Check Error:", error);
