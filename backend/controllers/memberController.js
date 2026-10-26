@@ -294,13 +294,8 @@ const registerMember = async (req, res) => {
       taluk,
       address,
       pincode,
-      qualification,
       profession,
       wing,
-      hoursAvailable,
-      idProofType,
-      idProofNumber,
-      pledgeAccepted,
     } = req.body;
 
     // Run Server-side Data Validation
@@ -320,7 +315,7 @@ const registerMember = async (req, res) => {
     });
     if (existingMember) {
       return res.status(409).json({
-        error: "This mobile number is already registered",
+        error: "This mobile number is already registered.",
         existingRegistrationId: existingMember.registrationId,
         status: existingMember.status,
       });
@@ -369,13 +364,9 @@ const registerMember = async (req, res) => {
       taluk: sanitizedTaluk,
       address: sanitizedAddress,
       pincode,
-      qualification: qualification || "",
       profession: sanitizedProfession,
       wing,
-      hoursAvailable: hoursAvailable || "5-10 hours/month",
-      idProofType: idProofType || "Aadhaar Card",
-      idProofNumber: idProofNumber || "",
-      pledgeAccepted: pledgeAccepted === "true" || pledgeAccepted === true,
+      pledgeAccepted: true,
       status: "PENDING",
     });
 
@@ -392,6 +383,43 @@ const registerMember = async (req, res) => {
   } catch (error) {
     console.error("Member Registration Error:", error);
     res.status(500).json({ error: error.message || "Failed to register member." });
+  }
+};
+
+// ─── 1b. Check Mobile Number Availability (Real-Time Duplicate Check) ────────
+const checkMobileExists = async (req, res) => {
+  try {
+    const rawMobile = req.query.mobile || "";
+    let cleanMobile = String(rawMobile).replace(/[\s\-()]/g, "");
+    if (cleanMobile.startsWith("+91")) cleanMobile = cleanMobile.slice(3);
+    if (cleanMobile.startsWith("91") && cleanMobile.length === 12) cleanMobile = cleanMobile.slice(2);
+    if (cleanMobile.startsWith("0") && cleanMobile.length === 11) cleanMobile = cleanMobile.slice(1);
+
+    if (!cleanMobile || !/^[6-9]\d{9}$/.test(cleanMobile)) {
+      return res.status(400).json({ error: "Please enter a valid 10-digit Indian mobile number." });
+    }
+
+    const existingMember = await Member.findOne({
+      mobile: cleanMobile,
+      status: { $in: ["PENDING", "APPROVED"] },
+    }).lean();
+
+    if (existingMember) {
+      return res.json({
+        registered: true,
+        message: "This mobile number is already registered.",
+        registrationId: existingMember.registrationId,
+        status: existingMember.status,
+      });
+    }
+
+    return res.json({
+      registered: false,
+      message: "Mobile number is available",
+    });
+  } catch (error) {
+    console.error("Check Mobile Exists Error:", error);
+    res.status(500).json({ error: "Failed to verify mobile number." });
   }
 };
 
@@ -427,22 +455,36 @@ const getAllMembers = async (req, res) => {
       ];
     }
 
+    const totalCount = await Member.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / parsedLimit) || 1;
+
     const members = await Member.find(query)
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit);
 
-    const totalCount = await Member.countDocuments(query);
-
-    // Compute Overall Statistics for KPI cards
+    // Overall Statistics for KPI cards & Analytics
     const totalAll = await Member.countDocuments();
     const totalPending = await Member.countDocuments({ status: "PENDING" });
     const totalApproved = await Member.countDocuments({ status: "APPROVED" });
     const totalRejected = await Member.countDocuments({ status: "REJECTED" });
 
-    // Wing Breakdown
+    // Wing Breakdown for Intelligence Charts
     const wingBreakdown = await Member.aggregate([
       { $group: { _id: "$wing", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    // State Breakdown (Top 10)
+    const stateBreakdown = await Member.aggregate([
+      { $group: { _id: "$state", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    // Gender Breakdown
+    const genderBreakdown = await Member.aggregate([
+      { $group: { _id: "$gender", count: { $sum: 1 } } },
     ]);
 
     res.json({
@@ -450,8 +492,9 @@ const getAllMembers = async (req, res) => {
       data: members,
       meta: {
         total: totalCount,
-        page: Number(page),
-        limit: Number(limit),
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages,
       },
       stats: {
         total: totalAll,
@@ -459,6 +502,8 @@ const getAllMembers = async (req, res) => {
         approved: totalApproved,
         rejected: totalRejected,
         wingBreakdown,
+        stateBreakdown,
+        genderBreakdown,
       },
     });
   } catch (error) {
@@ -467,40 +512,115 @@ const getAllMembers = async (req, res) => {
   }
 };
 
-// ─── 3. Update Member Status (Approve / Reject / Pending) ─────────────────────
+// ─── 3. Update Member Status (Approve / Reject / Pending / Admin Notes) ──────
 const updateMemberStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminNotes } = req.body;
 
-    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status value. Must be PENDING, APPROVED, or REJECTED." });
+    if (status === undefined && adminNotes === undefined) {
+      return res.status(400).json({ error: "Please provide status or adminNotes to update." });
     }
 
-    const updateFields = { status };
-    if (adminNotes !== undefined) updateFields.adminNotes = adminNotes;
-    if (status === "APPROVED") {
-      updateFields.approvedAt = new Date();
-    } else {
-      updateFields.approvedAt = null;
-    }
+    const member = mongoose.isValidObjectId(id)
+      ? await Member.findById(id)
+      : await Member.findOne({ registrationId: id });
 
-    const updated = await Member.findByIdAndUpdate(id, updateFields, { new: true });
-    if (!updated) {
+    if (!member) {
       return res.status(404).json({ error: "Member not found." });
     }
+
+    const prevStatus = member.status;
+    const adminUser = req.admin?.username || "MSD_Admin";
+
+    if (status !== undefined) {
+      if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status value. Must be PENDING, APPROVED, or REJECTED." });
+      }
+      if (status === "REJECTED") {
+        const finalNotes = adminNotes !== undefined ? String(adminNotes).trim() : (member.adminNotes || "").trim();
+        if (!finalNotes) {
+          return res.status(400).json({ error: "Rejection remarks are compulsory when rejecting an application." });
+        }
+      }
+      member.status = status;
+      if (status === "APPROVED") {
+        member.approvedAt = new Date();
+      } else {
+        member.approvedAt = null;
+      }
+    }
+
+    if (adminNotes !== undefined) {
+      member.adminNotes = String(adminNotes).trim();
+    } else if (status === "PENDING") {
+      member.adminNotes = "";
+    }
+
+    const updated = await member.save();
 
     // Update local backup file
     await syncToLocalBackupFile();
 
     res.json({
       success: true,
-      message: `Member status updated to ${status}.`,
+      message: `Member status updated to ${member.status}.`,
       member: updated,
     });
   } catch (error) {
     console.error("Update Status Error:", error);
     res.status(500).json({ error: error.message || "Failed to update member." });
+  }
+};
+
+// ─── 3b. Bulk Update Member Status (Batch Operations) ────────────────────────
+const bulkUpdateMemberStatus = async (req, res) => {
+  try {
+    const { memberIds, status, adminNotes } = req.body;
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({ error: "Please provide an array of memberIds." });
+    }
+
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value. Must be PENDING, APPROVED, or REJECTED." });
+    }
+
+    if (status === "REJECTED") {
+      const finalNotes = adminNotes !== undefined ? String(adminNotes).trim() : "";
+      if (!finalNotes) {
+        return res.status(400).json({ error: "Rejection remarks are compulsory when rejecting applications." });
+      }
+    }
+
+    const adminUser = req.admin?.username || "MSD_Admin";
+    const updateDoc = {
+      status,
+      approvedAt: status === "APPROVED" ? new Date() : null,
+    };
+    if (adminNotes !== undefined) {
+      updateDoc.adminNotes = String(adminNotes).trim();
+    } else if (status === "PENDING") {
+      updateDoc.adminNotes = "";
+    }
+
+    const validIds = memberIds.filter((id) => mongoose.isValidObjectId(id));
+    const result = await Member.updateMany(
+      { _id: { $in: validIds } },
+      {
+        $set: updateDoc,
+      }
+    );
+
+    await syncToLocalBackupFile();
+
+    res.json({
+      success: true,
+      message: `Successfully updated ${result.modifiedCount} member(s) to ${status}.`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Bulk Update Status Error:", error);
+    res.status(500).json({ error: error.message || "Failed to bulk update members." });
   }
 };
 
@@ -593,29 +713,33 @@ const verifyAdminToken = async (req, res) => {
 };
 
 // Helper to format member particulars for Digital PVC Card & Acknowledgment Receipt
-const formatMemberCardData = (member) => ({
-  registrationId: member.registrationId,
-  fullName: member.fullName,
-  fatherName: member.fatherName || "",
-  dob: member.dob || "",
-  age: member.age || null,
-  gender: member.gender || "Male",
-  mobile: member.mobile || "",
-  whatsapp: member.whatsapp || member.mobile || "",
-  email: member.email || "",
-  bloodGroup: member.bloodGroup || "Not Specified",
-  photoUrl: member.photoUrl || "",
-  state: member.state || "",
-  district: member.district || "",
-  taluk: member.taluk || "",
-  address: member.address || "",
-  pincode: member.pincode || "",
-  wing: member.wing || "",
-  profession: member.profession || "",
-  status: member.status,
-  approvedAt: member.approvedAt || null,
-  createdAt: member.createdAt || null,
-});
+const formatMemberCardData = (member) => {
+  const isRejected = member.status === "REJECTED";
+  return {
+    registrationId: member.registrationId,
+    fullName: member.fullName,
+    fatherName: member.fatherName || "",
+    dob: member.dob || "",
+    age: member.age || null,
+    gender: member.gender || "Male",
+    mobile: member.mobile || "",
+    whatsapp: member.whatsapp || member.mobile || "",
+    email: member.email || "",
+    bloodGroup: member.bloodGroup || "Not Specified",
+    photoUrl: member.photoUrl || "",
+    state: member.state || "",
+    district: member.district || "",
+    taluk: member.taluk || "",
+    address: member.address || "",
+    pincode: member.pincode || "",
+    wing: member.wing || "",
+    profession: member.profession || "",
+    status: member.status,
+    rejectReason: isRejected ? (member.adminNotes || "") : undefined,
+    approvedAt: member.approvedAt || null,
+    createdAt: member.createdAt || null,
+  };
+};
 
 // ─── 7. Public Status Verification (By Registration ID or Mobile) ─────────────
 const checkMemberStatus = async (req, res) => {
@@ -920,10 +1044,77 @@ const updateCardSettings = async (req, res) => {
   }
 };
 
+// ─── 7b. Re-submit Photo for Rejected Applicants ─────────────────────────────
+const resubmitMemberPhoto = async (req, res) => {
+  try {
+    const { registrationId, mobile } = req.body;
+    const file = req.file;
+
+    if (!registrationId || !mobile) {
+      return res.status(400).json({ error: "Registration ID and Mobile number are required." });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: "Please upload a new passport-size photograph." });
+    }
+
+    const cleanPhone = String(mobile).replace(/\D/g, "");
+    const member = await Member.findOne({
+      registrationId: { $regex: new RegExp(`^${escapeRegex(registrationId.trim())}$`, "i") },
+      mobile: { $regex: new RegExp(`${cleanPhone.slice(-10)}$`) },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: "No matching member record found with provided Registration ID and Mobile." });
+    }
+
+    if (member.status !== "REJECTED") {
+      return res.status(400).json({ error: "Photo re-submission is only permitted for applications with REJECTED status." });
+    }
+
+    // Upload to Cloudinary
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const base64 = `data:${file.mimetype};base64,${b64}`;
+    const uploadRes = await cloudinary.uploader.upload(base64, {
+      folder: "msd/members",
+      resource_type: "image",
+    });
+
+    // Delete old photo if it exists
+    if (member.photoPublicId) {
+      try {
+        await cloudinary.uploader.destroy(member.photoPublicId);
+      } catch (err) {
+        console.warn("Could not delete old photo from Cloudinary:", err.message);
+      }
+    }
+
+    member.photoUrl = uploadRes.secure_url;
+    member.photoPublicId = uploadRes.public_id;
+    member.status = "PENDING";
+    member.adminNotes = "Applicant re-submitted updated passport photograph. Awaiting committee verification.";
+
+    await member.save();
+    await syncToLocalBackupFile();
+
+    res.json({
+      success: true,
+      message: "New photograph uploaded successfully. Your application has been moved back to Pending Review.",
+      member: formatMemberCardData(member),
+    });
+  } catch (error) {
+    console.error("Resubmit Photo Error:", error);
+    res.status(500).json({ error: error.message || "Failed to re-submit photo." });
+  }
+};
+
 module.exports = {
   registerMember,
+  checkMobileExists,
   getAllMembers,
   updateMemberStatus,
+  bulkUpdateMemberStatus,
+  resubmitMemberPhoto,
   deleteMember,
   exportMembersJson,
   adminLogin,

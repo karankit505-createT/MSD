@@ -15,6 +15,9 @@ import {
   Loader2,
   Trash2,
   ShieldCheck,
+  Shield,
+  Lock,
+  ArrowLeft,
   X,
   LogOut,
   RefreshCw,
@@ -38,6 +41,11 @@ import {
   User,
   Calendar,
   MessageCircle,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  PieChart,
+  Activity,
 } from "lucide-react";
 import QRCode from "qrcode";
 import DigitalIdCard, {
@@ -47,6 +55,10 @@ import DigitalIdCard, {
   generateIdCardCanvas,
   generateIdCardBackCanvas,
   generateCombinedIdCardCanvas,
+  captureCardElement,
+  combineCapturedCards,
+  addPaddingToCardDataUrl,
+  setPng300Dpi,
 } from "@/components/DigitalIdCard";
 
 interface Member {
@@ -67,14 +79,10 @@ interface Member {
   taluk?: string;
   address: string;
   pincode: string;
-  qualification?: string;
   profession?: string;
   wing: string;
-  hoursAvailable?: string;
-  idProofType?: string;
-  idProofNumber?: string;
-  pledgeAccepted?: boolean;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNotes?: string;
   createdAt: string;
   approvedAt?: string;
 }
@@ -188,14 +196,36 @@ const Admin = () => {
 
   // Dashboard Data State
   const [members, setMembers] = useState<Member[]>([]);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<{
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    wingBreakdown?: Array<{ _id: string; count: number }>;
+    stateBreakdown?: Array<{ _id: string; count: number }>;
+    genderBreakdown?: Array<{ _id: string; count: number }>;
+  }>({
     total: 0,
     pending: 0,
     approved: 0,
     rejected: 0,
+    wingBreakdown: [],
+    stateBreakdown: [],
+    genderBreakdown: [],
   });
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Tab & Portal View Navigation State
+  const [activeAdminTab, setActiveAdminTab] = useState<"directory" | "analytics">("directory");
+
+  // Server-Side Pagination State
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(25);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+
 
   // Filters State
   const [search, setSearch] = useState("");
@@ -206,6 +236,9 @@ const Admin = () => {
   // Selected Member for Dossier Modal
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Quick Remarks Popup Modal State (Shows ONLY remarks)
+  const [remarkModalMember, setRemarkModalMember] = useState<Member | null>(null);
 
   // ID Card Seal & Signature Settings State
   const [cardSettingsModalOpen, setCardSettingsModalOpen] = useState(false);
@@ -223,6 +256,14 @@ const Admin = () => {
   const [dossierTab, setDossierTab] = useState<"dossier" | "card">("dossier");
   const [selectedMemberQr, setSelectedMemberQr] = useState<string>("");
 
+  // Status Confirmation Modal State (Prevents Accidental One-Click Actions)
+  const [statusActionTarget, setStatusActionTarget] = useState<{
+    member: Member;
+    targetStatus: "PENDING" | "APPROVED" | "REJECTED";
+  } | null>(null);
+  const [statusActionNote, setStatusActionNote] = useState<string>("");
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
+
   // Delete Confirmation Modal State
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -235,7 +276,15 @@ const Admin = () => {
   const handleDownloadPdf = async (member: Member) => {
     setDownloadingPdf(true);
     try {
-      await generateIdCardPdf(member, selectedMemberQr, cardSettings);
+      let frontUrl = "";
+      let backUrl = "";
+      try {
+        frontUrl = await captureCardElement("msd-pvc-card-front");
+        backUrl = await captureCardElement("msd-pvc-card-back");
+      } catch (e) {
+        console.warn("DOM capture fallback for Admin PDF:", e);
+      }
+      await generateIdCardPdf(member, selectedMemberQr, cardSettings, frontUrl, backUrl);
     } catch (err: any) {
       alert("PDF download failed: " + (err.message || "Unknown error"));
     } finally {
@@ -249,16 +298,37 @@ const Admin = () => {
       let dataUrl = "";
       let filenameSuffix = "BothSides";
       if (mode === "front") {
-        dataUrl = await generateIdCardCanvas(member, selectedMemberQr, cardSettings);
+        try {
+          dataUrl = await captureCardElement("msd-pvc-card-front");
+        } catch {
+          dataUrl = await generateIdCardCanvas(member, selectedMemberQr, cardSettings);
+        }
+        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
         filenameSuffix = "Front";
       } else if (mode === "back") {
-        dataUrl = await generateIdCardBackCanvas(member);
+        try {
+          dataUrl = await captureCardElement("msd-pvc-card-back");
+        } catch {
+          dataUrl = await generateIdCardBackCanvas(member);
+        }
+        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
         filenameSuffix = "Back";
       } else {
-        dataUrl = await generateCombinedIdCardCanvas(member, selectedMemberQr, cardSettings);
+        try {
+          const frontUrl = await captureCardElement("msd-pvc-card-front");
+          const backUrl = await captureCardElement("msd-pvc-card-back");
+          if (frontUrl && backUrl) {
+            dataUrl = await combineCapturedCards(frontUrl, backUrl, 48, 48);
+          } else {
+            throw new Error("Incomplete DOM capture");
+          }
+        } catch {
+          dataUrl = await generateCombinedIdCardCanvas(member, selectedMemberQr, cardSettings, 48, 48);
+        }
         filenameSuffix = "BothSides";
       }
       if (!dataUrl) throw new Error("Could not render card canvas.");
+      dataUrl = setPng300Dpi(dataUrl, 300);
       const link = document.createElement("a");
       link.download = `MSD_ID_Card_${filenameSuffix}_${member.registrationId || "member"}.png`;
       link.href = dataUrl;
@@ -411,8 +481,8 @@ const Admin = () => {
     }
   };
 
-  // Fetch Members
-  const fetchMembers = async () => {
+  // Fetch Members (Supports Server-Side Pagination & Aggregations)
+  const fetchMembers = async (targetPage = page, targetLimit = limit) => {
     if (!token) return;
     setLoading(true);
     try {
@@ -421,6 +491,8 @@ const Admin = () => {
         state: filterState,
         wing: filterWing,
         status: filterStatus,
+        page: String(targetPage),
+        limit: String(targetLimit),
       });
 
       const res = await fetch(
@@ -444,8 +516,22 @@ const Admin = () => {
       }
 
       setMembers(json.data || []);
+      if (json.meta) {
+        setPage(json.meta.page || 1);
+        setTotalPages(json.meta.totalPages || 1);
+        setTotalCount(json.meta.total || 0);
+      }
       if (json.stats) {
-        setStats(json.stats);
+        setStats((prev) => ({
+          ...prev,
+          total: json.stats.total ?? prev.total,
+          pending: json.stats.pending ?? prev.pending,
+          approved: json.stats.approved ?? prev.approved,
+          rejected: json.stats.rejected ?? prev.rejected,
+          wingBreakdown: json.stats.wingBreakdown || prev.wingBreakdown,
+          stateBreakdown: json.stats.stateBreakdown || prev.stateBreakdown,
+          genderBreakdown: json.stats.genderBreakdown || prev.genderBreakdown,
+        }));
       }
     } catch (err: any) {
       console.error(err);
@@ -456,22 +542,24 @@ const Admin = () => {
 
   useEffect(() => {
     if (token) {
-      fetchMembers();
+      setPage(1);
+      fetchMembers(1, limit);
     }
-  }, [token, filterState, filterWing, filterStatus]);
+  }, [token, filterState, filterWing, filterStatus, limit]);
 
   // Debounced Search Trigger
   useEffect(() => {
     if (!token) return;
     const timer = setTimeout(() => {
-      fetchMembers();
+      setPage(1);
+      fetchMembers(1, limit);
     }, 350);
     return () => clearTimeout(timer);
   }, [search]);
 
   // Lock body & html scroll and handle Escape key when modals are open
   useEffect(() => {
-    if (selectedMember || cardSettingsModalOpen || memberToDelete) {
+    if (selectedMember || cardSettingsModalOpen || memberToDelete || remarkModalMember || statusActionTarget) {
       const originalBodyOverflow = document.body.style.overflow;
       const originalHtmlOverflow = document.documentElement.style.overflow;
 
@@ -482,7 +570,11 @@ const Admin = () => {
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
-          if (memberToDelete) {
+          if (statusActionTarget) {
+            setStatusActionTarget(null);
+          } else if (remarkModalMember) {
+            setRemarkModalMember(null);
+          } else if (memberToDelete) {
             setMemberToDelete(null);
           } else if (cardSettingsModalOpen) {
             setCardSettingsModalOpen(false);
@@ -502,7 +594,7 @@ const Admin = () => {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [selectedMember, cardSettingsModalOpen, memberToDelete]);
+  }, [selectedMember, cardSettingsModalOpen, memberToDelete, remarkModalMember, statusActionTarget]);
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -553,16 +645,42 @@ const Admin = () => {
     setSelectedMember(member);
   };
 
-  // Update Member Status (Supports PENDING, APPROVED, REJECTED)
-  const handleUpdateStatus = async (
-    memberId: string,
-    status: "PENDING" | "APPROVED" | "REJECTED"
+  // Trigger Status Confirmation Modal (Prevents Unintended One-Click Approval / Rejection)
+  const handlePromptStatusChange = (
+    member: Member,
+    targetStatus: "PENDING" | "APPROVED" | "REJECTED"
   ) => {
-    if (!token) return;
+    setStatusActionTarget({ member, targetStatus });
+    setStatusActionNote(member.adminNotes || "");
+    setStatusActionError(null);
+  };
+
+  // Perform Confirmed Status Update (Supports PENDING, APPROVED, REJECTED)
+  const confirmStatusChange = async () => {
+    if (!token || !statusActionTarget) return;
+    const { member, targetStatus } = statusActionTarget;
+    const memberId = member._id;
+
+    // Compulsory rejection remarks validation
+    if (targetStatus === "REJECTED" && !statusActionNote.trim()) {
+      setStatusActionError("Rejection remarks are compulsory. Please select a preset or type a reason.");
+      return;
+    }
+
     setActionLoading(true);
     setStatusMessage(null);
+    setStatusActionError(null);
 
     try {
+      const payload: { status: "PENDING" | "APPROVED" | "REJECTED"; adminNotes?: string } = {
+        status: targetStatus,
+      };
+      if (targetStatus === "PENDING") {
+        payload.adminNotes = "";
+      } else {
+        payload.adminNotes = statusActionNote.trim();
+      }
+
       const res = await fetch(
         getApiUrl(`/api/members/admin/${memberId}/status`),
         {
@@ -571,7 +689,7 @@ const Admin = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -588,15 +706,29 @@ const Admin = () => {
         setSelectedMember(json.member);
       }
 
-      setStatusMessage(`Status updated to ${status} for ${json.member.fullName}`);
+      setStatusMessage(
+        targetStatus === "APPROVED"
+          ? `Cadre ${json.member.fullName} (${json.member.registrationId}) approved successfully! Official ID card activated.`
+          : targetStatus === "REJECTED"
+          ? `Application ${json.member.registrationId} marked as Rejected.`
+          : `Application ${json.member.registrationId} reset to Pending Review.`
+      );
       setTimeout(() => setStatusMessage(null), 4000);
 
-      fetchMembers(); // refresh stats counts
+      setStatusActionTarget(null);
+      setStatusActionNote("");
+      setStatusActionError(null);
+      fetchMembers(page, limit);
     } catch (err: any) {
-      alert(`Update failed: ${err.message}`);
+      alert(`Status update failed: ${err.message}`);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Open Quick Remarks Popup Modal
+  const handleOpenQuickRemarks = (member: Member) => {
+    setRemarkModalMember(member);
   };
 
   // Trigger Delete Confirmation Modal
@@ -677,6 +809,7 @@ const Admin = () => {
       "Wing",
       "Profession",
       "Status",
+      "Admin Notes",
       "Date Enrolled",
     ];
 
@@ -694,6 +827,7 @@ const Admin = () => {
       `"${m.wing}"`,
       `"${m.profession || ""}"`,
       `"${m.status}"`,
+      `"${(m.adminNotes || "").replace(/"/g, '""')}"`,
       `"${new Date(m.createdAt).toLocaleDateString()}"`,
     ]);
 
@@ -713,112 +847,203 @@ const Admin = () => {
     document.body.removeChild(link);
   };
 
+
+
   // ─── LOGIN SCREEN ──────────────────────────────────────────────────────────
   if (!token) {
     return (
-      <PageLayout hideHeader>
-        <section className="py-16 lg:py-24 bg-canvas min-h-[85vh] flex items-center justify-center">
-          <div className="max-w-md w-full mx-4">
-            <div className="card-feature-cream bg-white border border-hairline shadow-xl rounded-2xl p-8 relative overflow-hidden">
-              {/* Tricolor Stripe */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FF9933] to-[#138808] absolute top-0 left-0 right-0" />
-
-              <div className="text-center mb-8">
-                <img
-                  src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
-                  alt="MSD Logo"
-                  className="w-16 h-16 rounded-full mx-auto mb-3 shadow-xs object-contain"
-                />
-                <h1 className="font-serif text-2xl font-bold text-ink">Maha Seva Dal</h1>
-                <p className="text-xs text-[#FF6200] font-medium uppercase tracking-wider mt-0.5">
-                  Central Cadre Administration Portal
-                </p>
-                <p className="text-xs text-muted-editorial mt-1">
-                  Access official member registry & verification panel
-                </p>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label htmlFor="admin-username" className="block text-xs font-medium text-ink mb-1.5">
-                    Admin Username
-                  </label>
-                  <input
-                    id="admin-username"
-                    name="username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="Enter admin username"
-                    value={username}
-                    disabled={loginLoading}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      if (loginError) setLoginError("");
-                    }}
-                    required
-                    className="admin-login-input w-full text-sm px-3.5 py-2.5 rounded-lg bg-surface-soft text-ink placeholder:text-muted-editorial/60 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="admin-password" className="block text-xs font-medium text-ink mb-1.5">
-                    Security Password
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="admin-password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="Enter your password"
-                      value={password}
-                      disabled={loginLoading}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (loginError) setLoginError("");
-                      }}
-                      required
-                      className="admin-login-input w-full text-sm pl-3.5 pr-11 py-2.5 rounded-lg bg-surface-soft text-ink placeholder:text-muted-editorial/60 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <button
-                      type="button"
-                      disabled={loginLoading}
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-2.5 p-1 text-muted-editorial hover:text-ink focus:text-[#ff6200] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {loginError && (
-                  <div
-                    role="alert"
-                    className="flex items-center gap-2.5 p-3 text-xs font-medium text-[#d92d20] bg-[#fef3f2] border border-[#fecdca] rounded-xl shadow-xs transition-all duration-200"
-                  >
-                    <AlertCircle size={15} className="shrink-0 text-[#d92d20]" />
-                    <span>{loginError}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="w-full btn-primary-coral text-xs py-3 font-semibold flex justify-center items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-2 transition-all duration-200"
-                >
-                  {loginLoading ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <span>Sign In to Admin Portal</span>
-                  )}
-                </button>
-              </form>
-            </div>
+      <PageLayout hideHeader hideFooter>
+        <section className="relative h-screen max-h-screen bg-[#faf9f5] flex flex-col justify-between overflow-hidden">
+          {/* Subtle Ambient Background Lighting & Architectural Dot Grid */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Architectural Matrix Grid */}
+            <div
+              className="absolute inset-0 opacity-[0.4]"
+              style={{
+                backgroundImage: `radial-gradient(#d6cfc4 1px, transparent 1px)`,
+                backgroundSize: "22px 22px",
+              }}
+            />
+            {/* Tricolor Ambient Glow Orbs */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[650px] h-[360px] bg-gradient-to-b from-[#FF6200]/12 via-[#FF9933]/6 to-transparent rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -right-20 w-[360px] h-[360px] bg-[#138808]/8 rounded-full blur-3xl" />
+            <div className="absolute top-1/3 -left-24 w-[300px] h-[300px] bg-[#FF9933]/7 rounded-full blur-3xl" />
           </div>
+
+          {/* Top Executive Navigation Bar */}
+          <header className="relative z-10 w-full px-4 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between border-b border-stone-200/60 bg-white/70 backdrop-blur-md shrink-0">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-stone-700 hover:text-[#FF6200] transition-colors py-1 px-2.5 rounded-lg hover:bg-stone-100/80 group"
+            >
+              <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+              <span>Return to Public Portal</span>
+            </Link>
+          </header>
+
+          {/* Main Login Card Container */}
+          <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-2 sm:py-4 overflow-y-auto no-scrollbar">
+            <div className="max-w-[420px] w-full mx-auto my-auto">
+              {/* Card Container */}
+              <div className="bg-white/95 backdrop-blur-md border border-stone-200/90 shadow-[0_20px_50px_rgba(20,20,19,0.07)] rounded-2xl p-6 sm:p-7 relative overflow-hidden transition-all">
+                {/* Tricolor National Stripe */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FF9933] to-[#138808] absolute top-0 left-0 right-0" />
+
+                {/* Header Branding */}
+                <div className="flex flex-col items-center text-center mb-5 pt-0.5">
+                  {/* Emblem */}
+                  <div className="mb-2.5">
+                    <img
+                      src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png"
+                      alt="MSD Official Logo"
+                      className="w-14 h-14 rounded-full mx-auto object-contain"
+                    />
+                  </div>
+
+                  {/* Restricted Access Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/80 text-[10px] font-bold tracking-wider uppercase text-[#c74c00] mb-2.5 shadow-2xs">
+                    <Shield size={11} className="text-[#FF6200]" />
+                    <span>Restricted Cadre Access</span>
+                  </div>
+
+                  <h1 className="font-serif text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+                    Maha Seva Dal
+                  </h1>
+                  <p className="text-[10px] sm:text-[11px] font-bold text-[#FF6200] uppercase tracking-wider mt-0.5">
+                    Central Cadre Administration Portal
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
+                    Official Member Registry & Credential Management
+                  </p>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleLogin} className="space-y-3.5">
+                  <div>
+                    <label
+                      htmlFor="admin-username"
+                      className="block text-xs font-semibold text-stone-700 mb-1"
+                    >
+                      Admin Username
+                    </label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3.5 text-stone-400 pointer-events-none">
+                        <User size={15} />
+                      </div>
+                      <input
+                        id="admin-username"
+                        name="username"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="Enter admin username"
+                        value={username}
+                        disabled={loginLoading}
+                        onChange={(e) => {
+                          setUsername(e.target.value);
+                          if (loginError) setLoginError("");
+                        }}
+                        required
+                        className="w-full text-sm pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/60 text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-[#FF6200] focus:ring-4 focus:ring-[#FF6200]/15 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="admin-password"
+                      className="block text-xs font-semibold text-stone-700 mb-1"
+                    >
+                      Security Password
+                    </label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3.5 text-stone-400 pointer-events-none">
+                        <Lock size={15} />
+                      </div>
+                      <input
+                        id="admin-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="Enter security password"
+                        value={password}
+                        disabled={loginLoading}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (loginError) setLoginError("");
+                        }}
+                        required
+                        className="w-full text-sm pl-10 pr-11 py-2.5 rounded-xl border border-stone-300 bg-stone-50/60 text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-[#FF6200] focus:ring-4 focus:ring-[#FF6200]/15 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        disabled={loginLoading}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute right-3 p-1 text-stone-400 hover:text-stone-700 focus:text-[#FF6200] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember Session */}
+                  <div className="flex items-center text-[11px] pt-0.5">
+                    <label className="flex items-center gap-1.5 text-stone-600 hover:text-stone-900 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#FF6200] focus:ring-[#FF6200]/30 accent-[#FF6200] cursor-pointer"
+                        defaultChecked
+                      />
+                      <span>Remember session</span>
+                    </label>
+                  </div>
+
+                  {loginError && (
+                    <div
+                      role="alert"
+                      className="flex items-center gap-2.5 p-2.5 text-xs font-medium text-[#d92d20] bg-[#fef3f2] border border-[#fecdca] rounded-xl shadow-xs transition-all duration-200"
+                    >
+                      <AlertCircle size={15} className="shrink-0 text-[#d92d20]" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="w-full text-xs sm:text-sm py-2.5 sm:py-3 font-semibold text-white bg-gradient-to-r from-[#FF6200] to-[#E55500] hover:from-[#E55500] hover:to-[#CC4400] rounded-xl flex justify-center items-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>Verifying Credentials...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={16} />
+                        <span>Sign In to Admin Portal</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Security Advisory */}
+                <div className="mt-5 pt-3.5 border-t border-stone-100 flex items-center justify-center gap-1.5 text-[11px] text-stone-500 text-center">
+                  <Shield size={12} className="text-stone-400 shrink-0" />
+                  <span>Authorized Central Secretariat & State Cadre Incharges Only</span>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          {/* Minimalist Dedicated Admin Footer */}
+          <footer className="relative z-10 py-2.5 px-4 sm:px-8 text-center text-[11px] text-stone-500 border-t border-stone-200/60 bg-white/60 backdrop-blur-sm shrink-0">
+            <span>
+              Maha Seva Dal (Estd. 1947) · National Cadre Management System · All rights reserved
+            </span>
+          </footer>
+
+
         </section>
       </PageLayout>
     );
@@ -836,7 +1061,7 @@ const Admin = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-hairline mb-3">
             <div className="flex items-center gap-2.5">
               <img
-                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
+                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png"
                 alt="MSD Logo"
                 className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex-shrink-0 object-contain shadow-xs"
               />
@@ -858,7 +1083,7 @@ const Admin = () => {
                 <span>Export CSV</span>
               </button>
               <button
-                onClick={fetchMembers}
+                onClick={() => fetchMembers(page, limit)}
                 className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1.5"
                 title="Refresh list"
               >
@@ -875,6 +1100,48 @@ const Admin = () => {
             </div>
           </div>
 
+          {/* Portal Navigation Mode Switcher: Cadre Directory vs Intelligence & Analytics */}
+          <div className="flex items-center gap-2 mb-3 border-b border-hairline/80 pb-2">
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab("directory")}
+              className={`text-xs px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeAdminTab === "directory"
+                  ? "bg-[#FF6200] text-white shadow-xs"
+                  : "bg-white text-muted-editorial hover:text-ink border border-hairline hover:bg-surface-soft"
+              }`}
+            >
+              <Users size={14} />
+              <span>Cadre Directory</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  activeAdminTab === "directory" ? "bg-white/20 text-white" : "bg-surface-soft text-ink"
+                }`}
+              >
+                {totalCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab("analytics")}
+              className={`text-xs px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeAdminTab === "analytics"
+                  ? "bg-[#FF6200] text-white shadow-xs"
+                  : "bg-white text-muted-editorial hover:text-ink border border-hairline hover:bg-surface-soft"
+              }`}
+            >
+              <BarChart3 size={14} />
+              <span>Cadre Intelligence & Demographics</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                  activeAdminTab === "analytics" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-800"
+                }`}
+              >
+                Live Metrics
+              </span>
+            </button>
+          </div>
+
           {/* Status Alert Banner */}
           {statusMessage && (
             <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in shadow-2xs">
@@ -883,7 +1150,9 @@ const Admin = () => {
             </div>
           )}
 
-          {/* KPI Statistics Row (Clickable to Filter) */}
+          {activeAdminTab === "directory" ? (
+            <>
+              {/* KPI Statistics Row (Clickable to Filter) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-3">
             <div
               onClick={() => setFilterStatus("ALL")}
@@ -1044,189 +1313,499 @@ const Admin = () => {
 
                 <div className="hidden lg:flex items-center text-[11px] text-muted-editorial ml-2 pl-2 border-l border-hairline whitespace-nowrap">
                   <span>
-                    <strong className="text-ink font-semibold">{members.length}</strong> of{" "}
-                    <strong className="text-ink font-semibold">{stats.total}</strong> members
+                    <strong className="text-ink font-semibold">{totalCount}</strong> matching records
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Members Data Table */}
+          {/* VIEW MODE 1: CADRE DIRECTORY TABLE */}
           <div className="bg-white border border-hairline rounded-xl shadow-xs overflow-hidden mb-6">
-            {loading ? (
-              <div className="p-16 text-center text-muted-editorial text-sm">
-                <span className="animate-spin inline-block mr-2">⏳</span>
-                <span>Loading member records from MongoDB...</span>
-              </div>
-            ) : members.length === 0 ? (
-              <div className="p-16 text-center">
-                <Users size={36} className="mx-auto text-muted-editorial mb-3" />
-                <h3 className="font-serif font-bold text-base text-ink mb-1">No Members Found</h3>
-                <p className="text-xs text-muted-editorial mb-4">
-                  There are no registrations matching your active filters.
-                </p>
-                <Link to="/register" className="btn-primary-coral text-xs px-4 py-2 inline-flex">
-                  Enroll First Member
-                </Link>
-              </div>
-            ) : (
-              <div className="overflow-x-auto w-full">
-                <table
-                  className="w-full text-left border-collapse table-auto"
-                  style={{ tableLayout: "auto", width: "100%" }}
-                >
-                  <thead>
-                    <tr className="bg-surface-soft border-b border-hairline text-[11px] font-semibold text-muted-editorial uppercase tracking-wider">
-                      <th className="py-3 px-3 text-left min-w-[170px] 2xl:min-w-[210px]">Member Profile</th>
-                      <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[180px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Reg ID</th>
-                      <th className="py-3 px-2 text-left min-w-[140px] 2xl:min-w-[175px]">State & District</th>
-                      <th className="py-3 px-2 text-left min-w-[135px] 2xl:min-w-[170px]">Wing</th>
-                      <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[175px]">Contact</th>
-                      <th className="py-3 px-2 text-left min-w-[95px] 2xl:min-w-[115px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Enrolled</th>
-                      <th className="py-3 px-3.5 text-center min-w-[110px] 2xl:min-w-[130px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Status</th>
-                      <th className="py-3 px-3.5 text-center min-w-[210px] 2xl:min-w-[230px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-hairline text-[13px]">
-                    {members.map((member) => (
-                      <tr key={member._id} className="hover:bg-surface-soft/60 transition-colors">
-                        <td className="py-3 px-3 min-w-[170px] 2xl:min-w-[210px]">
-                          <div className="flex items-center gap-2.5">
-                            {member.photoUrl ? (
-                              <img
-                                src={member.photoUrl}
-                                alt={member.fullName}
-                                className="w-9 h-9 rounded-full object-cover border border-hairline shadow-2xs flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-9 h-9 rounded-full bg-surface-soft border border-hairline flex items-center justify-center font-bold text-[#FF6200] text-xs flex-shrink-0">
-                                {member.fullName.charAt(0)}
+              {loading ? (
+                <div className="p-16 text-center text-muted-editorial text-sm">
+                  <span className="animate-spin inline-block mr-2">⏳</span>
+                  <span>Loading member records from MongoDB...</span>
+                </div>
+              ) : members.length === 0 ? (
+                <div className="p-16 text-center">
+                  <Users size={36} className="mx-auto text-muted-editorial mb-3" />
+                  <h3 className="font-serif font-bold text-base text-ink mb-1">No Members Found</h3>
+                  <p className="text-xs text-muted-editorial mb-4">
+                    There are no registrations matching your active filters.
+                  </p>
+                  <Link to="/register" className="btn-primary-coral text-xs px-4 py-2 inline-flex">
+                    Enroll First Member
+                  </Link>
+                </div>
+              ) : (
+                <div className="overflow-x-auto w-full">
+                  <table
+                    className="w-full text-left border-collapse table-auto"
+                    style={{ tableLayout: "auto", width: "100%" }}
+                  >
+                    <thead>
+                      <tr className="bg-surface-soft border-b border-hairline text-[11px] font-semibold text-muted-editorial uppercase tracking-wider">
+                        <th className="py-3 px-3 text-left min-w-[170px] 2xl:min-w-[210px]">Member Profile</th>
+                        <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[180px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Reg ID</th>
+                        <th className="py-3 px-2 text-left min-w-[140px] 2xl:min-w-[175px]">State & District</th>
+                        <th className="py-3 px-2 text-left min-w-[135px] 2xl:min-w-[170px]">Wing</th>
+                        <th className="py-3 px-2 text-left min-w-[145px] 2xl:min-w-[175px]">Contact</th>
+                        <th className="py-3 px-2 text-left min-w-[95px] 2xl:min-w-[115px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Enrolled</th>
+                        <th className="py-3 px-3.5 text-center min-w-[110px] 2xl:min-w-[130px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Status</th>
+                        <th className="py-3 px-3 text-center min-w-[195px] whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-hairline text-[13px]">
+                      {members.map((member) => {
+                        return (
+                          <tr
+                            key={member._id}
+                            className="hover:bg-surface-soft/60 transition-colors"
+                          >
+                            <td className="py-3 px-3 min-w-[170px] 2xl:min-w-[210px]">
+                              <div className="flex items-center gap-2.5">
+                                {member.photoUrl ? (
+                                  <img
+                                    src={member.photoUrl}
+                                    alt={member.fullName}
+                                    className="w-9 h-9 rounded-full object-cover border border-hairline shadow-2xs flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-surface-soft border border-hairline flex items-center justify-center font-bold text-[#FF6200] text-xs flex-shrink-0">
+                                    {member.fullName.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-bold text-ink font-sans text-[13px] leading-tight truncate">{member.fullName}</div>
+                                  <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.profession || "Volunteer"}</div>
+                                </div>
                               </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="font-bold text-ink font-sans text-[13px] leading-tight truncate">{member.fullName}</div>
-                              <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.profession || "Volunteer"}</div>
+                            </td>
+
+                            <td className="py-3 px-2 font-mono font-semibold text-ink text-[12px] whitespace-nowrap min-w-[145px] 2xl:min-w-[180px]" style={{ whiteSpace: "nowrap" }}>
+                              <span className="bg-surface-soft px-2 py-1 rounded border border-hairline whitespace-nowrap">
+                                {member.registrationId}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-2 min-w-[140px] 2xl:min-w-[175px]">
+                              <div className="font-medium text-ink text-[13px] leading-tight truncate">{member.state}</div>
+                              <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.district}</div>
+                            </td>
+
+                            <td className="py-3 px-2 min-w-[135px] 2xl:min-w-[170px]">
+                              <span className="badge-coral-fill text-[10.5px] px-2 py-1 inline-block">
+                                {member.wing}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-2 min-w-[145px] 2xl:min-w-[175px]">
+                              <div className="font-mono text-ink text-[12px] leading-tight truncate">{member.mobile}</div>
+                              <div className="text-[11px] text-muted-editorial truncate max-w-[145px] leading-tight">
+                                {member.email || "—"}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-2 text-muted-editorial whitespace-nowrap text-[12px] min-w-[95px] 2xl:min-w-[115px]" style={{ whiteSpace: "nowrap" }}>
+                              {new Date(member.createdAt).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </td>
+
+                            {/* Status Badge & Admin Note Preview */}
+                            <td className="py-3 px-3.5 text-center whitespace-nowrap min-w-[110px] 2xl:min-w-[130px]" style={{ whiteSpace: "nowrap" }}>
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                {member.status === "APPROVED" ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+                                    <CheckCircle2 size={12} className="shrink-0" /> Approved
+                                  </span>
+                                ) : member.status === "REJECTED" ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenQuickRemarks(member);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap cursor-pointer transition-all active:scale-95"
+                                    title={member.adminNotes ? `Click to view rejection reason: "${member.adminNotes}"` : "Click to view rejection reason"}
+                                  >
+                                    <XCircle size={12} className="shrink-0" /> Rejected
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+                                    <Clock size={12} className="shrink-0" /> Pending
+                                  </span>
+                                )}
+                                {member.status === "REJECTED" && member.adminNotes && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenQuickRemarks(member);
+                                    }}
+                                    className="inline-flex items-center gap-1 max-w-[125px] text-[10px] font-medium text-rose-800 bg-rose-50/90 hover:bg-rose-100 hover:border-rose-300 border border-rose-200 px-2 py-0.5 rounded-full shadow-2xs truncate cursor-pointer transition-all active:scale-95"
+                                    title={`Click to view reason: "${member.adminNotes}"`}
+                                  >
+                                    <FileText size={9} className="shrink-0 text-rose-600" />
+                                    <span className="truncate">{member.adminNotes}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Member Actions: Review, Call, WhatsApp, Delete */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap min-w-[195px]" style={{ whiteSpace: "nowrap" }}>
+                              <div
+                                className="flex items-center justify-center gap-1.5 flex-nowrap"
+                                style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "center", flexWrap: "nowrap" }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenMember(member)}
+                                  className="flex-shrink-0 shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-md bg-[#FF6200] hover:bg-[#D65000] text-white font-semibold text-xs shadow-2xs hover:shadow-xs transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-[0.98]"
+                                  style={{ flexShrink: 0 }}
+                                  title="Review & Verify Member Details & ID Card"
+                                >
+                                  <ShieldCheck size={13} className="shrink-0" />
+                                  <span>Review</span>
+                                </button>
+
+                                {member.mobile && (
+                                  <a
+                                    href={`tel:+91${member.mobile.replace(/\D/g, "")}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-600 text-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                                    style={{ flexShrink: 0 }}
+                                    title={`Direct Call: ${member.fullName} (+91 ${member.mobile})`}
+                                    aria-label="Call Member"
+                                  >
+                                    <Phone size={13} className="shrink-0" />
+                                  </a>
+                                )}
+
+                                {(member.whatsapp || member.mobile) && (
+                                  <a
+                                    href={getMemberWhatsAppUrl(member)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                                    style={{ flexShrink: 0 }}
+                                    title={`WhatsApp Chat: ${member.fullName}`}
+                                    aria-label="WhatsApp Member"
+                                  >
+                                    <WhatsAppIcon size={13} />
+                                  </a>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteMember(member);
+                                  }}
+                                  className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+                                  style={{ flexShrink: 0 }}
+                                  title="Delete Member Record"
+                                  aria-label="Delete Member"
+                                >
+                                  <Trash2 size={13} className="shrink-0" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Server-Side Pagination Bar */}
+              <div className="px-4 py-3 bg-white border-t border-hairline flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 text-muted-editorial">
+                  <span>
+                    Showing{" "}
+                    <strong className="text-ink font-semibold">
+                      {totalCount === 0 ? 0 : (page - 1) * limit + 1}
+                    </strong>{" "}
+                    to{" "}
+                    <strong className="text-ink font-semibold">
+                      {Math.min(page * limit, totalCount)}
+                    </strong>{" "}
+                    of{" "}
+                    <strong className="text-ink font-semibold">{totalCount}</strong>{" "}
+                    records
+                  </span>
+                  <div className="h-3 w-px bg-hairline hidden sm:block" />
+                  <div className="flex items-center gap-1.5">
+                    <span>Rows per page:</span>
+                    <select
+                      value={limit}
+                      onChange={(e) => {
+                        const newLim = parseInt(e.target.value, 10);
+                        setLimit(newLim);
+                        setPage(1);
+                        fetchMembers(1, newLim);
+                      }}
+                      className="text-xs px-2 py-1 rounded border border-hairline bg-surface-soft text-ink font-medium focus:outline-none focus:border-[#FF6200]"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={page <= 1 || loading}
+                    onClick={() => {
+                      setPage(1);
+                      fetchMembers(1, limit);
+                    }}
+                    className="px-2 py-1 rounded border border-hairline bg-surface-soft hover:bg-white text-ink disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-colors"
+                    title="First Page"
+                  >
+                    « First
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page <= 1 || loading}
+                    onClick={() => {
+                      const prev = Math.max(1, page - 1);
+                      setPage(prev);
+                      fetchMembers(prev, limit);
+                    }}
+                    className="px-2.5 py-1 rounded border border-hairline bg-surface-soft hover:bg-white text-ink disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-colors flex items-center gap-1"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={13} />
+                    <span>Prev</span>
+                  </button>
+
+                  <span className="px-2.5 py-1 font-semibold text-ink">
+                    Page {page} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => {
+                      const next = Math.min(totalPages, page + 1);
+                      setPage(next);
+                      fetchMembers(next, limit);
+                    }}
+                    className="px-2.5 py-1 rounded border border-hairline bg-surface-soft hover:bg-white text-ink disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-colors flex items-center gap-1"
+                    title="Next Page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => {
+                      setPage(totalPages);
+                      fetchMembers(totalPages, limit);
+                    }}
+                    className="px-2 py-1 rounded border border-hairline bg-surface-soft hover:bg-white text-ink disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-colors"
+                    title="Last Page"
+                  >
+                    Last »
+                  </button>
+                </div>
+              </div>
+            </div>
+            </>
+          ) : (
+            /* VIEW MODE 2: CADRE INTELLIGENCE & DEMOGRAPHICS ANALYTICS TAB */
+            <div className="space-y-4 mb-6">
+              {/* Analytics Top KPI Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-white border border-hairline p-4 rounded-xl shadow-2xs">
+                  <div className="flex items-center justify-between text-muted-editorial text-xs mb-1">
+                    <span className="uppercase font-bold tracking-wider">Total Enrolled</span>
+                    <Users size={16} className="text-[#FF6200]" />
+                  </div>
+                  <div className="font-serif text-3xl font-black text-ink">{stats.total}</div>
+                  <div className="text-[11px] text-muted-editorial mt-1">
+                    National cadre registry baseline
+                  </div>
+                </div>
+
+                <div className="bg-white border border-hairline p-4 rounded-xl shadow-2xs">
+                  <div className="flex items-center justify-between text-emerald-800 text-xs mb-1">
+                    <span className="uppercase font-bold tracking-wider">Approval Rate</span>
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                  </div>
+                  <div className="font-serif text-3xl font-black text-emerald-900">
+                    {stats.total > 0 ? `${Math.round((stats.approved / stats.total) * 100)}%` : "0%"}
+                  </div>
+                  <div className="text-[11px] text-emerald-700 mt-1">
+                    {stats.approved} approved verified cadres
+                  </div>
+                </div>
+
+                <div className="bg-white border border-hairline p-4 rounded-xl shadow-2xs">
+                  <div className="flex items-center justify-between text-amber-800 text-xs mb-1">
+                    <span className="uppercase font-bold tracking-wider">Pending Review</span>
+                    <Clock size={16} className="text-amber-600" />
+                  </div>
+                  <div className="font-serif text-3xl font-black text-amber-900">
+                    {stats.pending}
+                  </div>
+                  <div className="text-[11px] text-amber-700 mt-1">
+                    Awaiting committee clearance
+                  </div>
+                </div>
+
+                <div className="bg-white border border-hairline p-4 rounded-xl shadow-2xs">
+                  <div className="flex items-center justify-between text-rose-800 text-xs mb-1">
+                    <span className="uppercase font-bold tracking-wider">Rejected Queue</span>
+                    <XCircle size={16} className="text-rose-600" />
+                  </div>
+                  <div className="font-serif text-3xl font-black text-rose-900">
+                    {stats.rejected}
+                  </div>
+                  <div className="text-[11px] text-rose-700 mt-1">
+                    Requiring applicant rectifications
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Breakdown Columns: Wing Distribution & Top States */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Wing Distribution Card */}
+                <div className="bg-white border border-hairline rounded-xl p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-hairline">
+                    <div className="flex items-center gap-2">
+                      <Briefcase size={16} className="text-[#FF6200]" />
+                      <h3 className="font-serif font-bold text-sm text-ink">
+                        MSD Operational Wing Distribution
+                      </h3>
+                    </div>
+                    <span className="text-[11px] text-muted-editorial">All Wings</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {WINGS.filter((w) => w !== "ALL").map((wingName) => {
+                      const match = (stats.wingBreakdown || []).find((w) => w._id === wingName);
+                      const count = match ? match.count : 0;
+                      const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+                      return (
+                        <div key={wingName} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-medium">
+                            <span className="text-ink">{wingName}</span>
+                            <div className="flex items-center gap-2 font-mono">
+                              <span className="font-bold text-[#FF6200]">{count}</span>
+                              <span className="text-muted-editorial text-[11px]">({pct}%)</span>
                             </div>
                           </div>
-                        </td>
-
-                        <td className="py-3 px-2 font-mono font-semibold text-ink text-[12px] whitespace-nowrap min-w-[145px] 2xl:min-w-[180px]" style={{ whiteSpace: "nowrap" }}>
-                          <span className="bg-surface-soft px-2 py-1 rounded border border-hairline whitespace-nowrap">
-                            {member.registrationId}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-2 min-w-[140px] 2xl:min-w-[175px]">
-                          <div className="font-medium text-ink text-[13px] leading-tight truncate">{member.state}</div>
-                          <div className="text-[11px] text-muted-editorial leading-tight truncate">{member.district}</div>
-                        </td>
-
-                        <td className="py-3 px-2 min-w-[135px] 2xl:min-w-[170px]">
-                          <span className="badge-coral-fill text-[10.5px] px-2 py-1 inline-block">
-                            {member.wing}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-2 min-w-[145px] 2xl:min-w-[175px]">
-                          <div className="font-mono text-ink text-[12px] leading-tight truncate">{member.mobile}</div>
-                          <div className="text-[11px] text-muted-editorial truncate max-w-[145px] leading-tight">
-                            {member.email || "—"}
+                          <div className="w-full h-2 rounded-full bg-surface-soft overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#FF6200] to-[#E05500] rounded-full transition-all duration-500"
+                              style={{ width: `${Math.max(2, pct)}%` }}
+                            />
                           </div>
-                        </td>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                        <td className="py-3 px-2 text-muted-editorial whitespace-nowrap text-[12px] min-w-[95px] 2xl:min-w-[115px]" style={{ whiteSpace: "nowrap" }}>
-                          {new Date(member.createdAt).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </td>
+                {/* Top States & Territorial Footprint */}
+                <div className="bg-white border border-hairline rounded-xl p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-hairline">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-[#FF6200]" />
+                      <h3 className="font-serif font-bold text-sm text-ink">
+                        Top States & Territorial Footprint
+                      </h3>
+                    </div>
+                    <span className="text-[11px] text-muted-editorial">Top 10 Regions</span>
+                  </div>
 
-                        {/* Status Badge */}
-                        <td className="py-3 px-3.5 text-center whitespace-nowrap min-w-[110px] 2xl:min-w-[130px]" style={{ whiteSpace: "nowrap" }}>
-                          <div className="inline-flex justify-center whitespace-nowrap">
-                            {member.status === "APPROVED" ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
-                                <CheckCircle2 size={12} className="shrink-0" /> Approved
-                              </span>
-                            ) : member.status === "REJECTED" ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
-                                <XCircle size={12} className="shrink-0" /> Rejected
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
-                                <Clock size={12} className="shrink-0" /> Pending
-                              </span>
-                            )}
+                  <div className="space-y-2.5">
+                    {(stats.stateBreakdown || []).length === 0 ? (
+                      <p className="text-xs text-muted-editorial py-6 text-center">No state data available yet.</p>
+                    ) : (
+                      (stats.stateBreakdown || []).slice(0, 8).map((st, idx) => {
+                        const pct = stats.total > 0 ? Math.round((st.count / stats.total) * 100) : 0;
+                        return (
+                          <div key={st._id} className="flex items-center gap-3 text-xs">
+                            <span className="w-5 text-right font-mono font-bold text-muted-editorial text-[11px]">
+                              #{idx + 1}
+                            </span>
+                            <span className="w-36 truncate font-medium text-ink">{st._id || "Unspecified"}</span>
+                            <div className="flex-1 h-2 rounded-full bg-surface-soft overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(3, pct)}%` }}
+                              />
+                            </div>
+                            <span className="w-12 text-right font-mono font-bold text-ink">{st.count}</span>
                           </div>
-                        </td>
-
-                        {/* Member Actions: Review Dossier, Call, WhatsApp & Delete */}
-                        <td className="py-3 px-3.5 text-center whitespace-nowrap min-w-[210px] 2xl:min-w-[230px]" style={{ whiteSpace: "nowrap" }}>
-                          <div
-                            className="flex items-center justify-center gap-2 flex-nowrap"
-                            style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "nowrap" }}
-                          >
-                            <button
-                              onClick={() => handleOpenMember(member)}
-                              className="flex-shrink-0 shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-md bg-[#FF6200] hover:bg-[#D65000] text-white font-semibold text-xs shadow-2xs hover:shadow-xs transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-[0.98]"
-                              style={{ flexShrink: 0 }}
-                              title="Review & Verify Member Details & ID Card"
-                            >
-                              <ShieldCheck size={13} className="shrink-0" />
-                              <span>Review</span>
-                            </button>
-
-                            {member.mobile && (
-                              <a
-                                href={`tel:+91${member.mobile.replace(/\D/g, "")}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-600 text-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
-                                style={{ flexShrink: 0 }}
-                                title={`Direct Call: ${member.fullName} (+91 ${member.mobile})`}
-                                aria-label="Call Member"
-                              >
-                                <Phone size={13} className="shrink-0" />
-                              </a>
-                            )}
-
-                            {(member.whatsapp || member.mobile) && (
-                              <a
-                                href={getMemberWhatsAppUrl(member)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
-                                style={{ flexShrink: 0 }}
-                                title={`WhatsApp Chat: ${member.fullName}`}
-                                aria-label="WhatsApp Member"
-                              >
-                                <WhatsAppIcon size={13} />
-                              </a>
-                            )}
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteMember(member);
-                              }}
-                              className="flex-shrink-0 shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
-                              style={{ flexShrink: 0 }}
-                              title="Permanently Delete Member Record"
-                              aria-label="Delete Member"
-                            >
-                              <Trash2 size={13} className="shrink-0" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Bottom Demographics Card */}
+              <div className="bg-white border border-hairline rounded-xl p-5 shadow-2xs">
+                <div className="flex items-center justify-between pb-3 border-b border-hairline mb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-[#FF6200]" />
+                    <h3 className="font-serif font-bold text-sm text-ink">
+                      Demographic & Gender Diversity Ratio
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveAdminTab("directory")}
+                    className="text-xs text-[#FF6200] font-semibold hover:underline"
+                  >
+                    View in Cadre Table →
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {["Male", "Female", "Other"].map((gender) => {
+                    const match = (stats.genderBreakdown || []).find((g) => g._id === gender);
+                    const count = match ? match.count : 0;
+                    const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+                    return (
+                      <div key={gender} className="p-3.5 bg-surface-soft/60 rounded-xl border border-hairline">
+                        <div className="flex items-center justify-between text-xs text-muted-editorial mb-1">
+                          <span className="font-bold uppercase tracking-wider">{gender} Cadres</span>
+                          <span className="font-mono text-ink font-bold">{pct}%</span>
+                        </div>
+                        <div className="font-serif text-2xl font-black text-ink">{count}</div>
+                        <div className="w-full h-1.5 rounded-full bg-hairline/80 mt-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              gender === "Male"
+                                ? "bg-sky-600"
+                                : gender === "Female"
+                                ? "bg-rose-500"
+                                : "bg-purple-600"
+                            }`}
+                            style={{ width: `${Math.max(2, pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1319,7 +1898,7 @@ const Admin = () => {
                             Cadre Verification Dossier
                           </span>
                           <span className="text-[11px] text-muted-editorial">
-                            Complete official registration profile & audit records
+                            Complete official registration profile & records
                           </span>
                         </div>
                       </div>
@@ -1590,30 +2169,21 @@ const Admin = () => {
                             {selectedMember.profession?.trim() || "Volunteer / Social Worker"}
                           </span>
                         </div>
-
-                        <div>
-                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
-                            Highest Qualification
-                          </span>
-                          <span className="font-semibold text-ink text-xs sm:text-sm block">
-                            {selectedMember.qualification?.trim() || "Graduate / Equivalent"}
-                          </span>
-                        </div>
                       </div>
                     </div>
 
-                    {/* SECTION 4: Registration, Pledge & Audit Details */}
+                    {/* SECTION 4: Registration & Audit Details */}
                     <div className="bg-white rounded-xl p-4 sm:p-5 border border-hairline shadow-2xs space-y-3.5">
                       <div className="flex items-center justify-between pb-2.5 border-b border-hairline/60">
                         <div className="flex items-center gap-2">
                           <ShieldCheck size={15} className="text-[#FF6200]" />
                           <span className="text-xs font-bold uppercase tracking-wider text-ink font-serif">
-                            4. Registration & Audit Details
+                            4. Registration & Enrollment Details
                           </span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3.5 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3.5 text-xs">
                         <div>
                           <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
                             Cadre Registry ID
@@ -1656,26 +2226,21 @@ const Admin = () => {
                               </span>
                             </span>
                           ) : selectedMember.status === "REJECTED" ? (
-                            <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenQuickRemarks(selectedMember)}
+                              className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-md border border-rose-200 hover:border-rose-300 cursor-pointer transition-all"
+                              title="Click to view rejection remarks popup"
+                            >
                               <XCircle size={13} className="text-rose-600" />
-                              <span>Rejected</span>
-                            </span>
+                              <span>Rejected (View Remarks)</span>
+                            </button>
                           ) : (
                             <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
                               <Clock size={13} className="text-amber-600" />
                               <span>Pending Review</span>
                             </span>
                           )}
-                        </div>
-
-                        <div>
-                          <span className="text-muted-editorial block text-[10px] uppercase font-bold tracking-wider mb-1">
-                            1947 Seva Pledge
-                          </span>
-                          <span className="inline-flex items-center w-fit gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                            <CheckCircle2 size={13} className="text-emerald-600" />
-                            <span>Accepted</span>
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -1700,7 +2265,7 @@ const Admin = () => {
                             <span>Provisional ID Card (Pending Approval)</span>
                           </div>
                           <button
-                            onClick={() => handleUpdateStatus(selectedMember._id, "APPROVED")}
+                            onClick={() => handlePromptStatusChange(selectedMember, "APPROVED")}
                             disabled={actionLoading}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-all active:scale-95"
                           >
@@ -1770,7 +2335,6 @@ const Admin = () => {
                       signatoryTitle={cardSettings.signatoryTitle}
                       hideActionButtons={true}
                       stacked={false}
-                      showViewToggle={false}
                       defaultView="both"
                     />
                   </div>
@@ -1807,7 +2371,7 @@ const Admin = () => {
                 </span>
 
                 <button
-                  onClick={() => handleUpdateStatus(selectedMember._id, "APPROVED")}
+                  onClick={() => handlePromptStatusChange(selectedMember, "APPROVED")}
                   disabled={actionLoading}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-2xs cursor-pointer ${
                     selectedMember.status === "APPROVED"
@@ -1820,20 +2384,27 @@ const Admin = () => {
                 </button>
 
                 <button
-                  onClick={() => handleUpdateStatus(selectedMember._id, "REJECTED")}
+                  onClick={() => {
+                    if (selectedMember.status === "REJECTED") {
+                      handleOpenQuickRemarks(selectedMember);
+                    } else {
+                      handlePromptStatusChange(selectedMember, "REJECTED");
+                    }
+                  }}
                   disabled={actionLoading}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-2xs cursor-pointer ${
                     selectedMember.status === "REJECTED"
                       ? "bg-rose-700 text-white ring-2 ring-rose-500/30"
                       : "bg-rose-600 hover:bg-rose-700 text-white"
                   }`}
+                  title={selectedMember.status === "REJECTED" ? "Click to view rejection remarks" : "Reject Application"}
                 >
                   <XCircle size={13} />
-                  <span>{selectedMember.status === "REJECTED" ? "✕ Rejected" : "Reject"}</span>
+                  <span>{selectedMember.status === "REJECTED" ? "✕ Rejected (View Remarks)" : "Reject"}</span>
                 </button>
 
                 <button
-                  onClick={() => handleUpdateStatus(selectedMember._id, "PENDING")}
+                  onClick={() => handlePromptStatusChange(selectedMember, "PENDING")}
                   disabled={actionLoading}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-2xs cursor-pointer ${
                     selectedMember.status === "PENDING"
@@ -2120,12 +2691,16 @@ const Admin = () => {
       {/* ─── DELETE CONFIRMATION MODAL ─────────────────────────────────────── */}
       {memberToDelete && (
         <div
-          className="fixed inset-0 z-[70] bg-black/65 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          className="fixed inset-0 z-[75] bg-black/65 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
           onWheel={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteLoading) setMemberToDelete(null);
+          }}
         >
           <div
-            className="bg-white rounded-2xl border border-rose-200 shadow-2xl max-w-md w-full p-6 relative"
+            className="bg-white rounded-2xl border border-rose-200 shadow-2xl max-w-md w-full p-6 relative animate-scale-up"
             onWheel={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setMemberToDelete(null)}
@@ -2193,6 +2768,361 @@ const Admin = () => {
                     <span>Permanently Delete</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── STATUS ACTION CONFIRMATION MODAL (APPROVE / REJECT / PENDING) ─── */}
+      {statusActionTarget && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/65 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          onWheel={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !actionLoading) {
+              setStatusActionTarget(null);
+              setStatusActionError(null);
+            }
+          }}
+        >
+          <div
+            className={`bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative border animate-scale-up ${
+              statusActionTarget.targetStatus === "APPROVED"
+                ? "border-emerald-300"
+                : statusActionTarget.targetStatus === "REJECTED"
+                ? "border-rose-300"
+                : "border-amber-300"
+            }`}
+            onWheel={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setStatusActionTarget(null);
+                setStatusActionError(null);
+              }}
+              disabled={actionLoading}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-muted-editorial hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer disabled:opacity-40"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3.5 mb-4">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center border flex-shrink-0 ${
+                  statusActionTarget.targetStatus === "APPROVED"
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                    : statusActionTarget.targetStatus === "REJECTED"
+                    ? "bg-rose-100 text-rose-700 border-rose-300"
+                    : "bg-amber-100 text-amber-700 border-amber-300"
+                }`}
+              >
+                {statusActionTarget.targetStatus === "APPROVED" ? (
+                  <CheckCircle2 size={24} />
+                ) : statusActionTarget.targetStatus === "REJECTED" ? (
+                  <XCircle size={24} />
+                ) : (
+                  <RotateCcw size={24} />
+                )}
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-ink">
+                  {statusActionTarget.targetStatus === "APPROVED"
+                    ? "Confirm Cadre Approval"
+                    : statusActionTarget.targetStatus === "REJECTED"
+                    ? "Confirm Application Rejection"
+                    : "Reset Application to Pending"}
+                </h3>
+                <p
+                  className={`text-xs font-medium ${
+                    statusActionTarget.targetStatus === "APPROVED"
+                      ? "text-emerald-700"
+                      : statusActionTarget.targetStatus === "REJECTED"
+                      ? "text-rose-600"
+                      : "text-amber-700"
+                  }`}
+                >
+                  {statusActionTarget.targetStatus === "APPROVED"
+                    ? "Generate official ID card & activate verified status"
+                    : statusActionTarget.targetStatus === "REJECTED"
+                    ? "Application will be marked rejected with official reason"
+                    : "Move application back to pending queue for review"}
+                </p>
+              </div>
+            </div>
+
+            {/* Member Details Brief */}
+            <div className="bg-surface-soft/80 p-3.5 rounded-xl border border-hairline mb-4 text-xs space-y-2">
+              <div className="flex items-center gap-3">
+                {statusActionTarget.member.photoUrl ? (
+                  <img
+                    src={statusActionTarget.member.photoUrl}
+                    alt={statusActionTarget.member.fullName}
+                    className="w-11 h-11 rounded-full object-cover border border-hairline shadow-2xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-full bg-surface-soft border border-hairline flex items-center justify-center font-bold text-[#FF6200] text-sm shrink-0">
+                    {statusActionTarget.member.fullName.charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-ink text-sm truncate">
+                      {statusActionTarget.member.fullName}
+                    </span>
+                    <span className="font-mono font-bold text-[#FF6200] text-xs shrink-0">
+                      {statusActionTarget.member.registrationId}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-editorial truncate mt-0.5">
+                    {statusActionTarget.member.wing} · {statusActionTarget.member.district}, {statusActionTarget.member.state}
+                  </div>
+                  <div className="text-[11px] text-muted-editorial mt-0.5">
+                    Mobile: <span className="font-mono text-ink font-medium">+91 {statusActionTarget.member.mobile}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rejection / Note Input */}
+            {statusActionTarget.targetStatus === "REJECTED" ? (
+              <div className="space-y-2.5 mb-4">
+                <label className="text-xs font-semibold text-ink flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span>Rejection Reason (Displayed to Applicant):</span>
+                    <span className="text-rose-600 font-bold">*</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 uppercase tracking-wide">
+                    Compulsory
+                  </span>
+                </label>
+                
+                {/* Reason Presets */}
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {[
+                    "Passport photograph blurred or invalid",
+                    "Incomplete address or invalid pincode",
+                    "Duplicate registration detected",
+                    "Age eligibility criteria not met (Below 18)",
+                    "Contact phone number unreachable or invalid",
+                    "Wing qualification mismatch",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setStatusActionNote(preset);
+                        setStatusActionError(null);
+                      }}
+                      className={`text-[10px] font-medium px-2 py-1 rounded transition-colors text-left cursor-pointer border ${
+                        statusActionNote === preset
+                          ? "bg-rose-100 text-rose-900 border-rose-300 font-semibold shadow-2xs"
+                          : "bg-surface-soft hover:bg-rose-50 hover:text-rose-700 border-hairline hover:border-rose-200"
+                      }`}
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  rows={2}
+                  value={statusActionNote}
+                  onChange={(e) => {
+                    setStatusActionNote(e.target.value);
+                    if (e.target.value.trim()) setStatusActionError(null);
+                  }}
+                  placeholder="Enter administrative rejection reason (compulsory)..."
+                  className={`w-full text-xs p-2.5 rounded-lg border outline-none transition resize-y placeholder:text-muted-editorial/60 ${
+                    statusActionError
+                      ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                      : "border-hairline focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-surface-soft/40"
+                  }`}
+                />
+
+                {statusActionError && (
+                  <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-[11px] font-semibold flex items-center gap-1.5">
+                    <AlertCircle size={13} className="text-rose-600 shrink-0" />
+                    <span>{statusActionError}</span>
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-editorial">
+                  The applicant will see this reason on their public status check page and can contact secretariat support.
+                </p>
+              </div>
+            ) : statusActionTarget.targetStatus === "APPROVED" ? (
+              <div className="space-y-2 mb-4">
+                <label className="text-xs font-semibold text-ink flex items-center justify-between">
+                  <span>Administrative Verification Remarks (Optional):</span>
+                  <span className="text-[10.5px] text-muted-editorial font-normal">Internal note</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {[
+                    "Photograph & details verified",
+                    "Phone contact verified",
+                    "State / District unit cleared",
+                    "Approved for official ID card",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setStatusActionNote(preset)}
+                      className={`text-[10px] font-medium px-2 py-1 rounded transition-colors text-left cursor-pointer border ${
+                        statusActionNote === preset
+                          ? "bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold shadow-2xs"
+                          : "bg-surface-soft hover:bg-emerald-50 hover:text-emerald-700 border-hairline hover:border-emerald-200"
+                      }`}
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={statusActionNote}
+                  onChange={(e) => setStatusActionNote(e.target.value)}
+                  placeholder="Optional internal remark (e.g. Details verified by state team)..."
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-hairline focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition bg-surface-soft/40 placeholder:text-muted-editorial/60"
+                />
+                <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-start gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    Confirming approval will immediately generate official PVC digital ID card credentials and activate the live verification QR code.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs text-amber-900 mb-4 flex items-start gap-2">
+                <RotateCcw size={14} className="text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  Are you sure you want to move this member back to <strong>Pending Verification</strong>? Any active approval or rejection note will be cleared.
+                </span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-hairline">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusActionTarget(null);
+                  setStatusActionError(null);
+                }}
+                disabled={actionLoading}
+                className="btn-secondary text-xs px-4 py-2 cursor-pointer disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmStatusChange}
+                disabled={
+                  actionLoading ||
+                  (statusActionTarget.targetStatus === "REJECTED" && !statusActionNote.trim())
+                }
+                title={
+                  statusActionTarget.targetStatus === "REJECTED" && !statusActionNote.trim()
+                    ? "Rejection remarks are compulsory before confirming rejection"
+                    : undefined
+                }
+                className={`text-xs px-4 py-2 rounded-lg font-semibold flex items-center gap-1.5 shadow-sm transition-all text-white ${
+                  statusActionTarget.targetStatus === "APPROVED"
+                    ? "bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer"
+                    : statusActionTarget.targetStatus === "REJECTED"
+                    ? !statusActionNote.trim()
+                      ? "bg-rose-300 cursor-not-allowed opacity-75"
+                      : "bg-rose-600 hover:bg-rose-700 active:scale-95 cursor-pointer"
+                    : "bg-amber-600 hover:bg-amber-700 active:scale-95 cursor-pointer"
+                } disabled:cursor-not-allowed`}
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : statusActionTarget.targetStatus === "APPROVED" ? (
+                  <>
+                    <CheckCircle2 size={13} />
+                    <span>Confirm & Approve Cadre</span>
+                  </>
+                ) : statusActionTarget.targetStatus === "REJECTED" ? (
+                  <>
+                    <XCircle size={13} />
+                    <span>Confirm Rejection</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={13} />
+                    <span>Confirm Reset</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── QUICK REMARKS POPUP (SHOWS ONLY REASON TEXT, NO EXTRA) ─── */}
+      {remarkModalMember && (
+        <div
+          className="fixed inset-0 z-[85] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in overflow-hidden overscroll-none"
+          onWheel={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRemarkModalMember(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-md w-full overflow-hidden relative"
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {/* Tricolor Top Stripe */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FF9933] to-[#138808]" />
+
+            {/* Header */}
+            <div className="px-5 py-3.5 border-b border-hairline flex items-center justify-between gap-3 bg-surface-soft/60">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-sm font-bold text-ink">
+                    {remarkModalMember.status === "REJECTED" ? "Rejection Reason" : "Administrative Remark"}
+                  </h3>
+                  <p className="text-[11px] text-muted-editorial font-mono truncate">
+                    {remarkModalMember.registrationId} · {remarkModalMember.fullName}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRemarkModalMember(null)}
+                className="p-1.5 rounded-full text-muted-editorial hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
+                title="Close (Esc)"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content: ONLY the reason text, clean and readable */}
+            <div className="p-5">
+              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-ink text-sm font-medium leading-relaxed whitespace-pre-wrap select-text">
+                {remarkModalMember.adminNotes || "No remark recorded."}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-hairline bg-surface-soft/40 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setRemarkModalMember(null)}
+                className="btn-primary-coral text-xs px-4 py-1.5 font-semibold cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

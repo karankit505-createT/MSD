@@ -29,7 +29,6 @@ const memberSchema = new mongoose.Schema(
     pincode: { type: String, required: true },
 
     // Professional & Wing
-    qualification: { type: String, default: "" },
     profession: { type: String, default: "" },
     wing: {
       type: String,
@@ -43,20 +42,15 @@ const memberSchema = new mongoose.Schema(
         "General Seva Cadre",
       ],
     },
-    hoursAvailable: { type: String, default: "5-10 hours/month" },
-
-    // ID Proof
-    idProofType: { type: String, default: "Aadhaar Card" },
-    idProofNumber: { type: String, default: "" },
 
     // Status & System
-    pledgeAccepted: { type: Boolean, default: true },
     status: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],
       default: "PENDING",
       index: true,
     },
+    pledgeAccepted: { type: Boolean, default: true },
     adminNotes: { type: String, default: "" },
     approvedAt: { type: Date, default: null },
   },

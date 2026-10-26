@@ -38,6 +38,8 @@ import {
   Trash2,
   Calendar,
   Edit3,
+  X,
+  Loader2,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import ImageCropModal from "@/components/ImageCropModal";
@@ -1040,6 +1042,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
   const [statusResult, setStatusResult] = useState<any>(null);
   const [statusQrUrl, setStatusQrUrl] = useState<string>("");
   const [copiedId, setCopiedId] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -1056,12 +1059,8 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     taluk: "",
     address: "",
     pincode: "",
-    qualification: "Graduate",
     profession: "",
     wing: "Legal Wing",
-    hoursAvailable: "5-10 hours/month",
-    idProofType: "Aadhaar Card",
-    idProofNumber: "",
     pledgeAccepted: false,
     termsAccepted: false,
   });
@@ -1072,10 +1071,58 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
   const [customDistrict, setCustomDistrict] = useState("");
   const [canSubmit, setCanSubmit] = useState(false);
   const [checkingMobile, setCheckingMobile] = useState(false);
+  const [existingMemberFound, setExistingMemberFound] = useState<{
+    registrationId: string;
+    status: string;
+  } | null>(null);
   const [sameAsMobile, setSameAsMobile] = useState(false);
   const nativeDateInputRef = React.useRef<HTMLInputElement | null>(null);
   const formCardRef = React.useRef<HTMLDivElement | null>(null);
   const errorBannerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Check mobile availability asynchronously with backend
+  const checkMobileAvailability = async (mobileNum: string): Promise<boolean> => {
+    const clean = mobileNum.replace(/[\s\-()]/g, "");
+    if (!/^[6-9]\d{9}$/.test(clean)) {
+      setExistingMemberFound(null);
+      return false;
+    }
+
+    setCheckingMobile(true);
+    try {
+      const res = await fetch(
+        getApiUrl(`/api/members/check-mobile?mobile=${encodeURIComponent(clean)}`)
+      );
+      const json = await res.json();
+      if (res.ok && json.registered) {
+        setExistingMemberFound({
+          registrationId: json.registrationId,
+          status: json.status,
+        });
+        setFieldErrors((prev) => ({
+          ...prev,
+          mobile: "This mobile number is already registered.",
+        }));
+        setTouchedFields((prev) => ({ ...prev, mobile: true }));
+        return true;
+      } else {
+        setExistingMemberFound(null);
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          if (next.mobile && next.mobile.includes("already registered")) {
+            delete next.mobile;
+          }
+          return next;
+        });
+        return false;
+      }
+    } catch (e) {
+      console.warn("Could not check mobile availability:", e);
+      return false;
+    } finally {
+      setCheckingMobile(false);
+    }
+  };
 
   // Photo state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -1132,6 +1179,9 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
         if (!val) return "Please enter your primary mobile number.";
         if (val.length < 10) return "Mobile number must be exactly 10 digits.";
         if (!/^[6-9]\d{9}$/.test(val)) return "Must be a valid 10-digit number starting with 6, 7, 8, or 9.";
+        if (existingMemberFound) {
+          return "This mobile number is already registered.";
+        }
         return "";
       }
       case "whatsapp": {
@@ -1221,6 +1271,13 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
       else delete next[field];
       return next;
     });
+
+    if (field === "mobile") {
+      const clean = String(val || "").trim();
+      if (clean.length < 10) {
+        setExistingMemberFound(null);
+      }
+    }
   };
 
   // Only align scroll upon final application submission so acknowledgment receipt is cleanly at the top of the viewport
@@ -2002,6 +2059,19 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
       return next;
     });
 
+    if (name === "mobile") {
+      if (existingMemberFound) {
+        setExistingMemberFound(null);
+      }
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        if (next.mobile && next.mobile.includes("already registered")) {
+          delete next.mobile;
+        }
+        return next;
+      });
+    }
+
     // Real-time error clearance/update as the user fills in details
     if (touchedFields[name]) {
       const err = validateField(name, formattedValue);
@@ -2188,11 +2258,26 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
       return;
     }
 
-    // On Step 1, verify mobile format before proceeding
-    if (step === 1 && formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile)) {
-      setErrorMsg("Please enter a valid 10-digit Indian mobile number.");
-      scrollToNotification();
-      return;
+    // On Step 1, verify mobile format and check duplicate registration before proceeding
+    if (step === 1) {
+      if (formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile)) {
+        setErrorMsg("Please enter a valid 10-digit Indian mobile number.");
+        scrollToNotification();
+        return;
+      }
+      if (existingMemberFound) {
+        setErrorMsg("This mobile number is already registered.");
+        scrollToNotification();
+        return;
+      }
+      if (formData.mobile && /^[6-9]\d{9}$/.test(formData.mobile)) {
+        const isDuplicate = await checkMobileAvailability(formData.mobile);
+        if (isDuplicate) {
+          setErrorMsg("This mobile number is already registered.");
+          scrollToNotification();
+          return;
+        }
+      }
     }
 
     setErrorMsg("");
@@ -2221,12 +2306,8 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
       taluk: "",
       address: "",
       pincode: "",
-      qualification: "Graduate",
       profession: "",
       wing: "Legal Wing",
-      hoursAvailable: "5-10 hours/month",
-      idProofType: "Aadhaar Card",
-      idProofNumber: "",
       pledgeAccepted: false,
       termsAccepted: false,
     });
@@ -2240,6 +2321,8 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
     setRawPhotoSrc(null);
     setFieldErrors({});
     setTouchedFields({});
+    setExistingMemberFound(null);
+    setCheckingMobile(false);
     setErrorMsg("");
   };
 
@@ -2275,6 +2358,10 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
 
       const data = new FormData();
       Object.entries(formData).forEach(([key, val]) => {
+        // Exclude client-only agreement flags from backend payload
+        if (key === "termsAccepted") {
+          return;
+        }
         if (key === "district") {
           data.append(key, normalizeTitleCase(finalDistrict));
         } else if (
@@ -2308,12 +2395,17 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
           setTouchedFields(marked);
         }
         if (res.status === 409 || (json.error && json.error.toLowerCase().includes("already registered"))) {
+          setExistingMemberFound({
+            registrationId: json.existingRegistrationId || "",
+            status: json.status || "PENDING",
+          });
+          const duplicateMsg = "This mobile number is already registered.";
           setFieldErrors((prev) => ({
             ...prev,
-            mobile: "This mobile number is already registered",
+            mobile: duplicateMsg,
           }));
           setTouchedFields((prev) => ({ ...prev, mobile: true }));
-          throw new Error("This mobile number is already registered");
+          throw new Error(duplicateMsg);
         }
         throw new Error(json.error || "Failed to submit registration");
       }
@@ -2327,10 +2419,7 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
       });
     } catch (err: any) {
       const msg = err.message || "Network error. Please make sure backend is running.";
-      const displayMsg = msg.toLowerCase().includes("already registered")
-        ? "This mobile number is already registered"
-        : msg;
-      setErrorMsg(displayMsg);
+      setErrorMsg(msg);
       scrollToNotification();
     } finally {
       setLoading(false);
@@ -2630,10 +2719,12 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                   role="alert"
                   aria-live="assertive"
                   tabIndex={-1}
-                  className="flex items-center gap-2.5 p-3.5 mb-6 text-xs text-rose-800 bg-rose-50 border-2 border-rose-300 rounded-xl shadow-md animate-fade-in ring-4 ring-rose-400/20 scroll-mt-28 outline-none"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 mb-6 text-xs text-rose-900 bg-rose-50 border-2 border-rose-300 rounded-xl shadow-md animate-fade-in ring-4 ring-rose-400/20 scroll-mt-28 outline-none"
                 >
-                  <AlertCircle size={18} className="flex-shrink-0 text-rose-600 animate-pulse" />
-                  <span className="font-semibold leading-relaxed">{errorMsg}</span>
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle size={18} className="flex-shrink-0 text-rose-600 animate-pulse" />
+                    <span className="font-semibold leading-relaxed">{errorMsg}</span>
+                  </div>
                 </div>
               )}
 
@@ -3526,10 +3617,16 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                                 setTouchedFields((prev) => ({ ...prev, pledgeAccepted: true }));
                                 setFieldErrors((prev) => {
                                   const next = { ...prev };
-                                  if (checked) delete next.pledgeAccepted;
-                                  else next.pledgeAccepted = "Please accept the Maha Seva Dal 1947 Seva Pledge.";
+                                  if (checked) {
+                                    delete next.pledgeAccepted;
+                                  } else {
+                                    next.pledgeAccepted = "Please accept the Maha Seva Dal 1947 Seva Pledge.";
+                                  }
                                   return next;
                                 });
+                                if (checked) {
+                                  setErrorMsg((prev) => (prev.toLowerCase().includes("pledge") ? "" : prev));
+                                }
                               }}
                               className="mt-1 w-4 h-4 rounded text-[#FF6200] border-hairline focus:ring-[#FF6200]"
                             />
@@ -3551,10 +3648,16 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                                 setTouchedFields((prev) => ({ ...prev, termsAccepted: true }));
                                 setFieldErrors((prev) => {
                                   const next = { ...prev };
-                                  if (checked) delete next.termsAccepted;
-                                  else next.termsAccepted = "Please agree to the Terms & Conditions and Privacy Policy.";
+                                  if (checked) {
+                                    delete next.termsAccepted;
+                                  } else {
+                                    next.termsAccepted = "Please agree to the Terms & Conditions and Privacy Policy.";
+                                  }
                                   return next;
                                 });
+                                if (checked) {
+                                  setErrorMsg((prev) => (prev.toLowerCase().includes("terms") ? "" : prev));
+                                }
                               }}
                               className="mt-1 w-4 h-4 rounded text-[#FF6200] border-hairline focus:ring-[#FF6200]"
                             />
@@ -3796,7 +3899,23 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                         Your application could not be verified by the committee at this time. For clarification or to re-apply with corrected credentials, please reach out to the Maha Seva Dal Secretariat.
                       </p>
 
-                      <div className="bg-white/80 border border-rose-200 rounded-xl p-4 mt-6 text-left grid grid-cols-2 gap-3 text-xs">
+                      {/* Rejection Reason / Secretariat Remark Callout */}
+                      {(statusResult.rejectReason || statusResult.adminNotes) && (
+                        <div className="bg-white border-2 border-rose-300 rounded-xl p-4 mt-4 text-left shadow-2xs">
+                          <div className="flex items-center gap-1.5 text-rose-800 font-bold text-xs uppercase tracking-wider mb-1.5">
+                            <AlertCircle size={15} className="text-rose-600 shrink-0" />
+                            <span>Reason for Rejection / Secretariat Remark:</span>
+                          </div>
+                          <div className="p-3 bg-rose-50/80 border border-rose-200 rounded-lg text-rose-950 font-semibold text-xs leading-relaxed whitespace-pre-wrap">
+                            {statusResult.rejectReason || statusResult.adminNotes}
+                          </div>
+                          <p className="text-[11px] text-muted-editorial mt-2">
+                            Please rectify the issue mentioned above before submitting a fresh application.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="bg-white/80 border border-rose-200 rounded-xl p-4 mt-4 text-left grid grid-cols-2 gap-3 text-xs">
                         <div>
                           <span className="text-muted-editorial block">Registration ID</span>
                           <span className="font-mono font-bold text-ink">{statusResult.registrationId}</span>
@@ -3805,9 +3924,21 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                           <span className="text-muted-editorial block">Full Name</span>
                           <span className="font-semibold text-ink">{statusResult.fullName}</span>
                         </div>
+                        {statusResult.wing && (
+                          <div>
+                            <span className="text-muted-editorial block">Wing Applied</span>
+                            <span className="font-medium text-ink">{statusResult.wing}</span>
+                          </div>
+                        )}
+                        {statusResult.state && (
+                          <div>
+                            <span className="text-muted-editorial block">Region</span>
+                            <span className="font-medium text-ink">{statusResult.district ? `${statusResult.district}, ` : ""}{statusResult.state}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="mt-5">
+                      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                         <button
                           type="button"
                           onClick={() => {
@@ -3815,9 +3946,16 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                             setStep(1);
                             setRegisteredMember(null);
                           }}
-                          className="btn-secondary text-xs px-4 py-2 font-medium"
+                          className="btn-primary-coral text-xs px-4 py-2 font-semibold"
                         >
                           Submit New Application
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSupportModalOpen(true)}
+                          className="btn-secondary text-xs px-4 py-2 font-medium cursor-pointer"
+                        >
+                          Contact Secretariat Support
                         </button>
                       </div>
                     </div>
@@ -3851,7 +3989,6 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
                         <DigitalIdCard
                           member={statusResult}
                           qrDataUrl={statusQrUrl}
-                          showViewToggle={true}
                           defaultView="both"
                         />
                       </div>
@@ -3873,6 +4010,75 @@ const Register: React.FC<RegisterProps> = ({ defaultTab = "register" }) => {
         onUseOriginal={() => setCropModalOpen(false)}
         title="Official ID Photo Framing"
       />
+
+      {/* ─── OFFICIAL SECRETARIAT DETAILS POPUP MODAL (SIMPLE ONLY) ────────── */}
+      {supportModalOpen && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSupportModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl border border-hairline shadow-2xl max-w-sm w-full p-6 relative animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setSupportModalOpen(false)}
+              className="absolute top-4 right-4 p-1 rounded-full text-muted-editorial hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Title */}
+            <h3 className="font-serif text-lg font-bold text-ink mb-5 tracking-tight">
+              Official Secretariat
+            </h3>
+
+            {/* Simple Details List */}
+            <ul className="space-y-4 text-xs text-body">
+              <li className="flex items-start gap-3">
+                <MapPin size={16} className="text-[#FF6200] flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed text-ink">
+                  Maha Seva Dal Secretariat, Head Office, India
+                </span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Mail size={16} className="text-[#FF6200] flex-shrink-0" />
+                <a
+                  href="mailto:mahasevadalorganization@gmail.com"
+                  className="hover:text-[#FF6200] transition-colors break-all font-medium text-ink"
+                >
+                  mahasevadalorganization@gmail.com
+                </a>
+              </li>
+              <li className="flex items-center gap-3">
+                <Phone size={16} className="text-[#FF6200] flex-shrink-0" />
+                <a
+                  href="tel:+919994625690"
+                  className="hover:text-[#FF6200] transition-colors font-mono font-medium text-ink"
+                >
+                  +91 9994625690
+                </a>
+              </li>
+            </ul>
+
+            {/* Simple Close Button */}
+            <div className="mt-6 pt-4 border-t border-hairline flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSupportModalOpen(false)}
+                className="btn-primary-coral text-xs px-4 py-1.5 font-semibold cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 };

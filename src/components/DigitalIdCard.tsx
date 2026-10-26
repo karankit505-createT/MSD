@@ -11,6 +11,7 @@ import {
   Building2,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
+import { toPng } from "html-to-image";
 import { getApiUrl } from "@/config/api";
 
 export interface DigitalIdCardProps {
@@ -525,7 +526,7 @@ const resolveBrandLogo = async (): Promise<{
   circularDataUrl: string;
 }> => {
   const brandLogoUrl =
-    "https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png";
+    "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
   let proxyLogoUrl = brandLogoUrl;
   if (proxyLogoUrl.startsWith("http") && !proxyLogoUrl.includes("/api/members/proxy-photo")) {
     proxyLogoUrl = getApiUrl(
@@ -1005,7 +1006,7 @@ export const generateIdCardCanvas = async (
       ctx.textAlign = "center";
       ctx.fillText("UNITY OF PEOPLE'S", 400, 1175);
 
-      return canvas.toDataURL("image/png");
+      return setPng300Dpi(canvas.toDataURL("image/png"), 300);
     };
 
     // First attempt: draw with photo (clean via proxy)
@@ -1029,25 +1030,58 @@ export const generateIdCardCanvas = async (
 /**
  * Clean & Simple PDF generator:
  * - Single-page dual-sided layout (Front & Back side-by-side like PNG format)
- * - Standard 70 mm × 100 mm physical dimensions with crop marks and center fold guideline
+ * - Standard 70 mm × 100 mm physical dimensions, clean with zero crop marks or extra text
  * - Simple, uncluttered presentation without extra paragraphs
  */
 export const generateIdCardPdf = async (
   member: DigitalIdCardProps["member"],
   qrDataUrl: string,
-  settings?: CardSettings
+  settings?: CardSettings,
+  capturedFrontUrl?: string,
+  capturedBackUrl?: string,
+  mode: "both" | "front" | "back" = "both"
 ): Promise<void> => {
-  // 1. Generate ultra-high-resolution canvas cards for BOTH Front and Back sides
-  const [dataUrl, backDataUrl] = await Promise.all([
-    generateIdCardCanvas(member, qrDataUrl, settings),
-    generateIdCardBackCanvas(member),
-  ]);
+  // 1. Use exact captured DOM card graphics if provided, else fall back to canvas
+  let dataUrl = capturedFrontUrl || "";
+  let backDataUrl = capturedBackUrl || "";
 
-  if (!dataUrl) {
+  if (mode === "front" && !dataUrl) {
+    dataUrl = await generateIdCardCanvas(member, qrDataUrl, settings);
+  } else if (mode === "back" && !backDataUrl) {
+    backDataUrl = await generateIdCardBackCanvas(member);
+    dataUrl = backDataUrl;
+  } else if (mode === "both") {
+    if (!dataUrl || !backDataUrl) {
+      const [genFront, genBack] = await Promise.all([
+        !dataUrl ? generateIdCardCanvas(member, qrDataUrl, settings) : Promise.resolve(dataUrl),
+        !backDataUrl ? generateIdCardBackCanvas(member) : Promise.resolve(backDataUrl),
+      ]);
+      dataUrl = dataUrl || genFront;
+      backDataUrl = backDataUrl || genBack;
+    }
+  }
+
+  if (!dataUrl && !backDataUrl) {
     throw new Error("Could not generate card graphic for PDF.");
   }
 
-  // 2. Initialize A4 PDF (210 x 297 mm) - Clean Single Page Layout
+  const cardW = 70;
+  const cardH = 100;
+
+  // Single side PDF: Sized EXACTLY 70 mm x 100 mm - 100% pure card, zero extra margins or space
+  if (mode === "front" || mode === "back") {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [cardW, cardH],
+    });
+    doc.addImage(mode === "front" ? dataUrl : backDataUrl, "PNG", 0, 0, cardW, cardH);
+    const suffix = mode === "front" ? "Front" : "Back";
+    doc.save(`MSD_ID_Card_${suffix}_${member.registrationId || "member"}.pdf`);
+    return;
+  }
+
+  // Both sides PDF: Clean dual-sided layout on standard A4 page (ONLY the cards, NO extra markings)
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -1057,237 +1091,23 @@ export const generateIdCardPdf = async (
   const pageWidth = 210;
   const pageHeight = 297;
 
-  // Load brand logo circular DataURL for PDF header
-  let circularLogoDataUrl = "";
-  try {
-    const logoData = await resolveBrandLogo();
-    circularLogoDataUrl = logoData.circularDataUrl;
-  } catch (logoErr) {
-    console.warn("Could not load logo for PDF header:", logoErr);
-  }
+  // Standard 70 mm x 100 mm cards side-by-side, centered on the page
+  const gap = 14;
+  const totalW = cardW * 2 + gap; // 154 mm
+  const startX = (pageWidth - totalW) / 2; // 28 mm
+  const frontCardX = startX;
+  const backCardX = startX + cardW + gap;
+  const cardY = (pageHeight - cardH) / 2; // centered vertically (98.5 mm)
 
-  // ─── 1. Tricolor Top Ribbon ───
-  doc.setFillColor(255, 98, 0); // Saffron
-  doc.rect(0, 0, pageWidth, 2.5, "F");
-  doc.setFillColor(255, 255, 255); // White
-  doc.rect(0, 2.5, pageWidth, 1.5, "F");
-  doc.setFillColor(19, 136, 8); // Green
-  doc.rect(0, 4, pageWidth, 2.5, "F");
-
-  // ─── 2. Clean Header Bar ───
-  if (circularLogoDataUrl) {
-    doc.addImage(circularLogoDataUrl, "PNG", 18, 9, 16, 16);
-  } else {
-    doc.setFillColor(250, 245, 235);
-    doc.circle(26, 17, 8, "F");
-    doc.setDrawColor(255, 98, 0);
-    doc.setLineWidth(0.5);
-    doc.circle(26, 17, 8, "S");
-    doc.setTextColor(255, 98, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("MSD", 26, 19.5, { align: "center" });
-  }
-
-  // Center Organization Titles
-  doc.setTextColor(20, 20, 19);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("MAHA SEVA DAL", pageWidth / 2, 16, { align: "center" });
-
-  doc.setTextColor(255, 98, 0); // Official Saffron
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.text("OFFICIAL CADRE PVC IDENTITY CARD", pageWidth / 2, 21, { align: "center" });
-
-  doc.setTextColor(115, 107, 94);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text(
-    "ESTD. 1947 · UNITY OF PEOPLE'S · DUAL-SIDED PRINT SPECIFICATION (70 mm × 100 mm)",
-    pageWidth / 2,
-    25.5,
-    { align: "center" }
-  );
-
-  // Right Official Cadre Seal Badge
-  const rightBadgeX = 184;
-  const rightBadgeY = 17;
-  doc.setFillColor(250, 245, 235);
-  doc.circle(rightBadgeX, rightBadgeY, 8, "F");
-  doc.setDrawColor(255, 98, 0);
-  doc.setLineWidth(0.4);
-  doc.circle(rightBadgeX, rightBadgeY, 8, "S");
-  doc.setDrawColor(220, 210, 195);
-  doc.setLineWidth(0.2);
-  doc.circle(rightBadgeX, rightBadgeY, 6.8, "S");
-
-  doc.setTextColor(255, 98, 0);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(5);
-  doc.text("ESTD", rightBadgeX, rightBadgeY - 2.8, { align: "center" });
-
-  doc.setTextColor(20, 20, 19);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("1947", rightBadgeX, rightBadgeY + 0.8, { align: "center" });
-
-  doc.setTextColor(19, 136, 8);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(4.5);
-  doc.text("CADRE", rightBadgeX, rightBadgeY + 4, { align: "center" });
-
-  // Thin separator line
-  doc.setDrawColor(220, 210, 195);
-  doc.setLineWidth(0.4);
-  doc.line(18, 29, pageWidth - 18, 29);
-
-  // ─── 3. Dual-Sided ID Cards (Side-by-Side - Exact Clean PNG Layout) ───
-  // Card dimensions: 70mm x 100mm (Standard universal PVC pouch size)
-  const cardW = 70;
-  const cardH = 100;
-  const frontCardX = 30;
-  const backCardX = 110;
-  const divideX = 105;
-  const badgeY = 40;
-  const cardY = 47;
-
-  // Front Side Badge
-  doc.setFillColor(255, 243, 229);
-  doc.roundedRect(frontCardX, badgeY, cardW, 5.5, 1, 1, "F");
-  doc.setDrawColor(255, 98, 0);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(frontCardX, badgeY, cardW, 5.5, 1, 1, "S");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.setTextColor(255, 98, 0);
-  doc.text("FRONT SIDE", frontCardX + cardW / 2, badgeY + 3.8, {
-    align: "center",
-  });
-
-  // Back Side Badge
-  doc.setFillColor(250, 246, 238);
-  doc.roundedRect(backCardX, badgeY, cardW, 5.5, 1, 1, "F");
-  doc.setDrawColor(61, 56, 50);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(backCardX, badgeY, cardW, 5.5, 1, 1, "S");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.setTextColor(44, 40, 36);
-  doc.text("BACK SIDE", backCardX + cardW / 2, badgeY + 3.8, {
-    align: "center",
-  });
-
-  // Outer dashed guidelines around each card
-  doc.setDrawColor(180, 170, 155);
-  doc.setLineWidth(0.25);
-  doc.setLineDashPattern([2, 2], 0);
-  doc.rect(frontCardX - 1.5, cardY - 1.5, cardW + 3, cardH + 3, "S");
-  doc.rect(backCardX - 1.5, cardY - 1.5, cardW + 3, cardH + 3, "S");
-
-  // Center vertical cutting & folding line
-  doc.setDrawColor(150, 140, 125);
-  doc.setLineWidth(0.35);
-  doc.line(divideX, badgeY, divideX, cardY + cardH + 4);
-  doc.setLineDashPattern([], 0);
-
-  // Scissor cut / fold icons
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(5.5);
-  doc.setTextColor(140, 130, 115);
-  doc.text("✂ CUT / FOLD", divideX, badgeY - 1.2, { align: "center" });
-  doc.text("✂ FOLD", divideX, cardY + cardH + 7, { align: "center" });
-
-  // Corner crop marks for Front & Back Cards
-  const markerLen = 3;
-  doc.setDrawColor(120, 110, 95);
-  doc.setLineWidth(0.35);
-  // Top-left front
-  doc.line(frontCardX - 3.5, cardY - 1.5, frontCardX - 3.5 - markerLen, cardY - 1.5);
-  doc.line(frontCardX - 1.5, cardY - 3.5, frontCardX - 1.5, cardY - 3.5 - markerLen);
-  // Bottom-left front
-  doc.line(frontCardX - 3.5, cardY + cardH + 1.5, frontCardX - 3.5 - markerLen, cardY + cardH + 1.5);
-  doc.line(frontCardX - 1.5, cardY + cardH + 3.5, frontCardX - 1.5, cardY + cardH + 3.5 + markerLen);
-  // Top-right back
-  doc.line(backCardX + cardW + 3.5, cardY - 1.5, backCardX + cardW + 3.5 + markerLen, cardY - 1.5);
-  doc.line(backCardX + cardW + 1.5, cardY - 3.5, backCardX + cardW + 1.5, cardY - 3.5 - markerLen);
-  // Bottom-right back
-  doc.line(backCardX + cardW + 3.5, cardY + cardH + 1.5, backCardX + cardW + 3.5 + markerLen, cardY + cardH + 1.5);
-  doc.line(backCardX + cardW + 1.5, cardY + cardH + 3.5, backCardX + cardW + 1.5, cardY + cardH + 3.5 + markerLen);
-
-  // Add the high-resolution Front Card Image
+  // Draw Front Card directly
   doc.addImage(dataUrl, "PNG", frontCardX, cardY, cardW, cardH);
 
-  // Add the high-resolution Back Card Image side-by-side
+  // Draw Back Card directly
   if (backDataUrl) {
     doc.addImage(backDataUrl, "PNG", backCardX, cardY, cardW, cardH);
   }
 
-  // 1-Line Clean Cutting & Pouch Note below cards (NO extra paragraphs)
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(115, 107, 94);
-  doc.text(
-    "✂ Cut along outer crop marks · Fold along center dashed line for standard PVC ID card pouch (70 mm × 100 mm / 2.63\" × 3.88\")",
-    pageWidth / 2,
-    cardY + cardH + 8,
-    { align: "center" }
-  );
-
-  // ─── 4. Simple Member & Authorization Row (Clean, No Paragraphs) ───
-  const infoY = cardY + cardH + 18;
-  doc.setFillColor(250, 247, 240);
-  doc.roundedRect(25, infoY, pageWidth - 50, 24, 2, 2, "F");
-  doc.setDrawColor(225, 215, 200);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(25, infoY, pageWidth - 50, 24, 2, 2, "S");
-
-  // Left Column: Cadre Member Info
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(140, 130, 115);
-  doc.text("CADRE MEMBER:", 32, infoY + 7);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(27, 27, 27);
-  doc.text(member.fullName || "Cadre Member", 32, infoY + 13);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(115, 107, 94);
-  doc.text(`ID: ${member.registrationId || "MSD-IND"} · Wing: ${member.wing || "General Cadre"}`, 32, infoY + 18.5);
-
-  // Right Column: Signatory
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(140, 130, 115);
-  doc.text("AUTHORIZED SIGNATORY:", pageWidth - 32, infoY + 7, { align: "right" });
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(27, 27, 27);
-  doc.text(settings?.signatoryName || "Authorized Signatory", pageWidth - 32, infoY + 13, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(115, 107, 94);
-  doc.text(settings?.signatoryTitle || "Central Executive Committee", pageWidth - 32, infoY + 18.5, { align: "right" });
-
-  // ─── 5. Bottom Security Band ───
-  doc.setFillColor(44, 40, 36);
-  doc.rect(0, 286, pageWidth, 11, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(255, 153, 51); // Saffron
-  doc.text("MAHA SEVA DAL · ESTD 1947 · UNITY OF PEOPLE'S", pageWidth / 2, 291.5, { align: "center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(200, 200, 200);
-  doc.text(
-    "DISCIPLINE · SERVICE · UNITY · GOVT REG NO: 1947/MSD/NAT · ALL RIGHTS RESERVED",
-    pageWidth / 2,
-    295,
-    { align: "center" }
-  );
-
-  // ─── 6. Save File ───
+  // Save clean PDF
   doc.save(`MSD_ID_Card_${member.registrationId || "member"}.pdf`);
 };
 
@@ -1565,7 +1385,7 @@ export const generateIdCardBackCanvas = async (
     ctx.textAlign = "center";
     ctx.fillText("DISCIPLINE · SERVICE · UNITY", 400, 1172);
 
-    return canvas.toDataURL("image/png");
+    return setPng300Dpi(canvas.toDataURL("image/png"), 300);
   } catch (err) {
     console.error("Back Canvas Generation Error:", err);
     return "";
@@ -1578,7 +1398,9 @@ export const generateIdCardBackCanvas = async (
 export const generateCombinedIdCardCanvas = async (
   member: DigitalIdCardProps["member"],
   qrDataUrl: string,
-  settings?: CardSettings
+  settings?: CardSettings,
+  padding = 48,
+  gap = 48
 ): Promise<string> => {
   try {
     const [frontDataUrl, backDataUrl] = await Promise.all([
@@ -1599,116 +1421,259 @@ export const generateCombinedIdCardCanvas = async (
       throw new Error("Failed to load front or back card image");
     }
 
+    const width = frontImg.width + backImg.width + gap + padding * 2;
+    const height = Math.max(frontImg.height, backImg.height) + padding * 2;
+
     const canvas = document.createElement("canvas");
-    // Sheet dimensions: Two 800x1200 cards side-by-side with 80px middle gap, 40px margins
-    const width = 1760;
-    const height = 1410;
     canvas.width = width;
     canvas.height = height;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return "";
 
-    // 1. Studio Print Background (Ivory paper certificate gradient)
-    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, "#ffffff");
-    bgGrad.addColorStop(0.5, "#faf7f0");
-    bgGrad.addColorStop(1, "#f4ede0");
-    ctx.fillStyle = bgGrad;
+    // Clean white background with space around the cards - absolutely NO cutting marks, NO scissors, NO badges, NO extra text
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
-    // Decorative outer border
-    ctx.strokeStyle = "#FF6200";
-    ctx.lineWidth = 6;
-    ctx.strokeRect(6, 6, width - 12, height - 12);
-    ctx.strokeStyle = "#d6c5ad";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(12, 12, width - 24, height - 24);
+    // Draw Front Card on the left and Back Card on the right with space around
+    ctx.drawImage(frontImg, padding, padding);
+    ctx.drawImage(backImg, padding + frontImg.width + gap, padding);
 
-    // 2. Top Header Bar
-    ctx.fillStyle = "#2c2824";
-    ctx.fillRect(15, 15, width - 30, 60);
-
-    // Header Titles
-    ctx.fillStyle = "#FF9933";
-    ctx.font = "bold 22px Georgia, serif";
-    ctx.textAlign = "left";
-    ctx.fillText("MAHA SEVA DAL · OFFICIAL CADRE PVC IDENTITY CARD", 40, 52);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 13px Arial, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText("DUAL-SIDED PRINT SPECIFICATION (70 mm × 100 mm / 2.63\" × 3.88\") · ESTD 1947", width - 40, 51);
-
-    // 3. Side Labels & Badges
-    const cardY = 85;
-    const frontX = 40;
-    const backX = 920;
-
-    // Front Side Badge
-    ctx.fillStyle = "#fff3e5";
-    ctx.fillRect(frontX, cardY, 800, 36);
-    ctx.strokeStyle = "#FF6200";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(frontX, cardY, 800, 36);
-    ctx.fillStyle = "#FF6200";
-    ctx.font = "bold 15px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("FRONT SIDE", frontX + 400, cardY + 24);
-
-    // Back Side Badge
-    ctx.fillStyle = "#faf6ee";
-    ctx.fillRect(backX, cardY, 800, 36);
-    ctx.strokeStyle = "#3d3832";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(backX, cardY, 800, 36);
-    ctx.fillStyle = "#2c2824";
-    ctx.font = "bold 15px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("BACK SIDE", backX + 400, cardY + 24);
-
-    // 4. Draw Cards (at full native 800x1200 resolution)
-    const cardImgY = 130;
-    ctx.drawImage(frontImg, frontX, cardImgY, 800, 1200);
-    ctx.drawImage(backImg, backX, cardImgY, 800, 1200);
-
-    // 5. Center Cutting & Folding Dashed Guide
-    const divideX = 880;
-    ctx.save();
-    ctx.strokeStyle = "#8a7e70";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 8]);
-    ctx.beginPath();
-    ctx.moveTo(divideX, cardY);
-    ctx.lineTo(divideX, cardImgY + 1200);
-    ctx.stroke();
-    ctx.restore();
-
-    // Center Vertical Guide Notice
-    ctx.save();
-    ctx.translate(divideX, (cardImgY + 1200) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = "#776b5d";
-    ctx.font = "bold 12px Courier, monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("✂ CUT / FOLD ALONG THIS LINE FOR DOUBLE-SIDED CARD HOLDER ✂", 0, -6);
-    ctx.restore();
-
-    // 6. Bottom Security Band (Only Saffron Text)
-    const footerY = cardImgY + 1210;
-    ctx.fillStyle = "#2c2824";
-    ctx.fillRect(15, footerY, width - 30, 48);
-
-    ctx.fillStyle = "#FF9933";
-    ctx.font = "bold 15px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("DISCIPLINE · SERVICE · UNITY", width / 2, footerY + 29);
-
-    return canvas.toDataURL("image/png");
+    return setPng300Dpi(canvas.toDataURL("image/png"), 300);
   } catch (err) {
     console.error("Combined Canvas Generation Error:", err);
     return "";
   }
+};
+
+/**
+ * Embed 300 DPI resolution metadata into a PNG base64 data URL.
+ * Injects the standard PNG physical pixel dimensions (pHYs) chunk (11,811 pixels/meter = 300 DPI).
+ * Enables professional print shops, Photoshop, and PVC card printers to recognize exact 300 DPI resolution.
+ */
+export const setPng300Dpi = (dataUrl: string, dpi = 300): string => {
+  try {
+    if (!dataUrl || !dataUrl.startsWith("data:image/png")) return dataUrl;
+
+    const base64Index = dataUrl.indexOf(",");
+    if (base64Index === -1) return dataUrl;
+
+    const base64 = dataUrl.slice(base64Index + 1);
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    if (len < 33) return dataUrl;
+
+    // Verify PNG signature: 0x89, 0x50, 0x4E, 0x47
+    if (
+      binaryString.charCodeAt(0) !== 0x89 ||
+      binaryString.charCodeAt(1) !== 0x50 ||
+      binaryString.charCodeAt(2) !== 0x4e ||
+      binaryString.charCodeAt(3) !== 0x47
+    ) {
+      return dataUrl;
+    }
+
+    // Calculate pixels per meter for the requested DPI: DPI / 0.0254
+    const pxPerMeter = Math.round(dpi / 0.0254); // 11811 for 300 DPI
+
+    const p1 = (pxPerMeter >>> 24) & 0xff;
+    const p2 = (pxPerMeter >>> 16) & 0xff;
+    const p3 = (pxPerMeter >>> 8) & 0xff;
+    const p4 = pxPerMeter & 0xff;
+
+    // CRC-32 table for PNG chunk verification
+    const crcTable: number[] = [];
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      crcTable[n] = c >>> 0;
+    }
+
+    const calcCrc32 = (chunkTypeAndData: number[]): number => {
+      let crc = 0xffffffff;
+      for (let i = 0; i < chunkTypeAndData.length; i++) {
+        crc = crcTable[(crc ^ chunkTypeAndData[i]) & 0xff] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    };
+
+    const typeAndData = [
+      0x70, 0x48, 0x59, 0x73, // 'p', 'H', 'Y', 's'
+      p1, p2, p3, p4,         // X pixels per unit
+      p1, p2, p3, p4,         // Y pixels per unit
+      0x01,                   // Unit specifier: 1 = meter
+    ];
+
+    const crcVal = calcCrc32(typeAndData);
+    const crcBytes = [
+      (crcVal >>> 24) & 0xff,
+      (crcVal >>> 16) & 0xff,
+      (crcVal >>> 8) & 0xff,
+      crcVal & 0xff,
+    ];
+
+    // 4 bytes length (9) + 4 bytes type ('pHYs') + 9 bytes data + 4 bytes CRC = 21 bytes
+    const physChunk = new Uint8Array([
+      0x00, 0x00, 0x00, 0x09,
+      ...typeAndData,
+      ...crcBytes,
+    ]);
+
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Check if pHYs chunk already exists
+    let existingPhysIndex = -1;
+    for (let i = 8; i < len - 12; i++) {
+      if (
+        bytes[i] === 0x70 &&
+        bytes[i + 1] === 0x48 &&
+        bytes[i + 2] === 0x59 &&
+        bytes[i + 3] === 0x73
+      ) {
+        existingPhysIndex = i - 4; // Start of length
+        break;
+      }
+    }
+
+    let finalBytes: Uint8Array;
+    if (existingPhysIndex !== -1) {
+      finalBytes = new Uint8Array(len);
+      finalBytes.set(bytes.subarray(0, existingPhysIndex), 0);
+      finalBytes.set(physChunk, existingPhysIndex);
+      finalBytes.set(bytes.subarray(existingPhysIndex + 21), existingPhysIndex + 21);
+    } else {
+      // Standard IHDR chunk ends at byte 33 (8 bytes signature + 4 length + 4 type + 13 data + 4 CRC)
+      finalBytes = new Uint8Array(len + 21);
+      finalBytes.set(bytes.subarray(0, 33), 0);
+      finalBytes.set(physChunk, 33);
+      finalBytes.set(bytes.subarray(33), 54);
+    }
+
+    // Convert back to base64 in safe chunks
+    let binary = "";
+    const chunkSize = 16384;
+    for (let i = 0; i < finalBytes.length; i += chunkSize) {
+      const chunk = finalBytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+    }
+
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch (err) {
+    console.warn("Could not embed 300 DPI PNG metadata:", err);
+    return dataUrl;
+  }
+};
+
+/**
+ * Capture an on-screen DOM card element exactly as displayed using html-to-image
+ * Outputs a crisp 300+ DPI data URL (pixelRatio: 3) with official 300 DPI metadata
+ */
+export const captureCardElement = async (elementId: string): Promise<string> => {
+  const el = document.getElementById(elementId);
+  if (!el) {
+    throw new Error(`Element #${elementId} not found in DOM`);
+  }
+
+  // Pre-wait for any images inside the element to finish loading
+  const imgs = Array.from(el.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) return resolve();
+          const onLoad = () => { cleanup(); resolve(); };
+          const onError = () => { cleanup(); resolve(); };
+          const timer = setTimeout(() => { cleanup(); resolve(); }, 1200);
+          const cleanup = () => {
+            clearTimeout(timer);
+            img.removeEventListener("load", onLoad);
+            img.removeEventListener("error", onError);
+          };
+          img.addEventListener("load", onLoad);
+          img.addEventListener("error", onError);
+        })
+    )
+  );
+
+  const rawDataUrl = await toPng(el, {
+    pixelRatio: 3, // 315x450px at 3x -> 945x1350px (crisp 300+ DPI print resolution)
+    cacheBust: false,
+    quality: 1.0,
+    backgroundColor: "#ffffff",
+  });
+
+  return setPng300Dpi(rawDataUrl, 300);
+};
+
+/**
+ * Add clean white padding space around a single card data URL for PNG export
+ */
+export const addPaddingToCardDataUrl = async (
+  cardDataUrl: string,
+  padding = 48
+): Promise<string> => {
+  if (!cardDataUrl) return "";
+  const img = await safeLoadImage(cardDataUrl);
+  if (!img) return cardDataUrl;
+
+  const canvas = document.createElement("canvas");
+  const width = img.width + padding * 2;
+  const height = img.height + padding * 2;
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return cardDataUrl;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, padding, padding);
+
+  return setPng300Dpi(canvas.toDataURL("image/png"), 300);
+};
+
+/**
+ * Combine Front and Back captured card images side-by-side into a single high-res PNG
+ * with clean presentation and space around the cards (zero cutting lines or extra text)
+ */
+export const combineCapturedCards = async (
+  frontDataUrl: string,
+  backDataUrl: string,
+  padding = 48,
+  gap = 48
+): Promise<string> => {
+  const [frontImg, backImg] = await Promise.all([
+    safeLoadImage(frontDataUrl),
+    safeLoadImage(backDataUrl),
+  ]);
+
+  if (!frontImg || !backImg) {
+    throw new Error("Could not load captured card images");
+  }
+
+  const canvas = document.createElement("canvas");
+  const width = frontImg.width + backImg.width + gap + padding * 2;
+  const height = Math.max(frontImg.height, backImg.height) + padding * 2;
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  // Clean white background with space around the ID cards - absolutely NO cutting signs, NO scissors, NO extra text
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  // Draw Front Card on the left and Back Card on the right with space around
+  ctx.drawImage(frontImg, padding, padding);
+  ctx.drawImage(backImg, padding + frontImg.width + gap, padding);
+
+  return setPng300Dpi(canvas.toDataURL("image/png"), 300);
 };
 
 export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
@@ -1761,26 +1726,69 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
     year: "numeric",
   });
 
+  const ensureCardsRendered = async (): Promise<() => void> => {
+    if (activeView === "both") return () => {};
+    const prev = activeView;
+    setActiveView("both");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    return () => setActiveView(prev);
+  };
+
   const handleDownloadImage = async (mode: "both" | "front" | "back" = "both") => {
     setDownloading(true);
+    let cleanup = () => {};
     try {
+      if (mode === "both" && activeView !== "both") {
+        cleanup = await ensureCardsRendered();
+      } else if (mode === "front" && activeView === "back") {
+        cleanup = await ensureCardsRendered();
+      } else if (mode === "back" && activeView === "front") {
+        cleanup = await ensureCardsRendered();
+      }
+
       let dataUrl = "";
       let filenameSuffix = "BothSides";
 
       if (mode === "front") {
-        dataUrl = await generateIdCardCanvas(member, qrDataUrl, cardSettings);
+        try {
+          dataUrl = await captureCardElement("msd-pvc-card-front");
+        } catch (e) {
+          console.warn("DOM capture fallback:", e);
+          dataUrl = await generateIdCardCanvas(member, qrDataUrl, cardSettings);
+        }
+        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
         filenameSuffix = "Front";
       } else if (mode === "back") {
-        dataUrl = await generateIdCardBackCanvas(member);
+        try {
+          dataUrl = await captureCardElement("msd-pvc-card-back");
+        } catch (e) {
+          console.warn("DOM capture fallback:", e);
+          dataUrl = await generateIdCardBackCanvas(member);
+        }
+        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
         filenameSuffix = "Back";
       } else {
-        dataUrl = await generateCombinedIdCardCanvas(member, qrDataUrl, cardSettings);
+        try {
+          const frontUrl = await captureCardElement("msd-pvc-card-front");
+          const backUrl = await captureCardElement("msd-pvc-card-back");
+          if (frontUrl && backUrl) {
+            dataUrl = await combineCapturedCards(frontUrl, backUrl, 48, 48);
+          } else {
+            throw new Error("Incomplete DOM capture");
+          }
+        } catch (e) {
+          console.warn("DOM capture fallback:", e);
+          dataUrl = await generateCombinedIdCardCanvas(member, qrDataUrl, cardSettings, 48, 48);
+        }
         filenameSuffix = "BothSides";
       }
 
       if (!dataUrl) {
-        throw new Error("Could not render card canvas.");
+        throw new Error("Could not render card image.");
       }
+
+      // Ensure strict 300 DPI print metadata is embedded in final PNG
+      dataUrl = setPng300Dpi(dataUrl, 300);
 
       const link = document.createElement("a");
       link.download = `MSD_ID_Card_${filenameSuffix}_${member.registrationId || "member"}.png`;
@@ -1792,62 +1800,58 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
       console.error("Download error:", err);
       alert("Download error: " + (err.message || "Failed to download card"));
     } finally {
+      cleanup();
       setDownloading(false);
     }
   };
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (mode: "both" | "front" | "back" = "both") => {
     setDownloadingPdf(true);
+    let cleanup = () => {};
     try {
-      await generateIdCardPdf(member, qrDataUrl, cardSettings);
+      if (mode === "both" && activeView !== "both") {
+        cleanup = await ensureCardsRendered();
+      } else if (mode === "front" && activeView === "back") {
+        cleanup = await ensureCardsRendered();
+      } else if (mode === "back" && activeView === "front") {
+        cleanup = await ensureCardsRendered();
+      }
+
+      let frontUrl = "";
+      let backUrl = "";
+      if (mode === "front") {
+        try {
+          frontUrl = await captureCardElement("msd-pvc-card-front");
+        } catch (e) {
+          console.warn("DOM capture for front PDF fell back:", e);
+        }
+      } else if (mode === "back") {
+        try {
+          backUrl = await captureCardElement("msd-pvc-card-back");
+        } catch (e) {
+          console.warn("DOM capture for back PDF fell back:", e);
+        }
+      } else {
+        try {
+          frontUrl = await captureCardElement("msd-pvc-card-front");
+          backUrl = await captureCardElement("msd-pvc-card-back");
+        } catch (e) {
+          console.warn("DOM capture for dual PDF fell back:", e);
+        }
+      }
+
+      await generateIdCardPdf(member, qrDataUrl, cardSettings, frontUrl, backUrl, mode);
     } catch (err: any) {
       console.error("PDF download error:", err);
       alert("PDF download failed: " + (err.message || "Unknown error"));
     } finally {
+      cleanup();
       setDownloadingPdf(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* ─── SIDE SELECTOR (WHEN ENABLED) ─── */}
-      {showViewToggle && (
-        <div className="flex items-center justify-center gap-1 mb-3.5 bg-surface-soft p-1 rounded-2xl border border-hairline shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setActiveView("front")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeView === "front"
-                ? "bg-[#FF6200] text-white shadow-xs"
-                : "text-muted-editorial hover:text-ink hover:bg-white/60"
-            }`}
-          >
-            Front Side
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("back")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeView === "back"
-                ? "bg-[#FF6200] text-white shadow-xs"
-                : "text-muted-editorial hover:text-ink hover:bg-white/60"
-            }`}
-          >
-            Back Side
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("both")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeView === "both"
-                ? "bg-[#FF6200] text-white shadow-xs"
-                : "text-muted-editorial hover:text-ink hover:bg-white/60"
-            }`}
-          >
-            Both Sides
-          </button>
-        </div>
-      )}
 
       {/* ─── CARDS CONTAINER ─── */}
       <div
@@ -1857,82 +1861,87 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
       >
         {/* ══════════════ 1. FRONT SIDE ══════════════ */}
         {(activeView === "both" || activeView === "front") && (
-          <div className="flex flex-col items-center flex-1 w-full max-w-[360px] sm:max-w-[394px]">
-          {/* Front Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-full max-w-[344px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
-            <ShieldCheck size={14} />
-            <span>FRONT SIDE</span>
-          </div>
+          <div className="flex flex-col items-center flex-1 w-full max-w-[315px]">
+            {/* Front Header Badge */}
+            <div className="flex items-center justify-center gap-1.5 w-full max-w-[315px] px-3 py-1 mb-2 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+              <ShieldCheck size={13} />
+              <span>FRONT SIDE</span>
+            </div>
 
-          {/* Physical PVC Card Container - Front */}
-          <div className="p-1 sm:p-2.5 bg-surface-soft/60 rounded-2xl sm:rounded-3xl border border-hairline shadow-inner w-full max-w-[356px] sm:max-w-[394px] flex flex-col justify-center items-center">
+            {/* Physical PVC Card - Front (70mm x 100mm -> 315px x 450px, 7:10 ratio) */}
             <div
               id="msd-pvc-card-front"
-              className="w-full max-w-[344px] sm:max-w-[370px] min-h-[500px] sm:h-[560px] flex flex-col justify-between bg-white rounded-xl sm:rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-full max-w-[315px] h-[450px] aspect-[7/10] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl hover:shadow-2xl transition-shadow overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",
                 backgroundSize: "20px 20px, 100% 100%",
               }}
             >
+              {/* Subtle PVC Gloss Finish */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/20 rounded-2xl z-30" />
+
               {/* Lanyard Punch Slot Simulation */}
-              <div className="pt-2 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
-                <div className="w-14 h-2.5 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
+              <div className="pt-1.5 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
+                <div className="w-11 h-2 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
               </div>
 
               {/* Indian National Tricolor Ribbon */}
-              <div className="h-2 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
+              <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
 
               {/* Card Header */}
-              <div className="px-4 pt-3 pb-2 border-b border-[#e8ddcb] bg-gradient-to-b from-white to-[#faf6ef]">
-                <div className="flex items-center justify-between gap-2">
+              <div className="px-3 pt-2 pb-1.5 border-b border-[#e8ddcb] bg-gradient-to-b from-white to-[#faf6ef]">
+                <div className="flex items-center justify-between gap-1.5">
                   <img
-                    src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
+                    src="/logo.png"
                     alt="MSD Logo"
                     crossOrigin="anonymous"
-                    className="w-11 h-11 rounded-full object-contain shadow-xs flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
+                    }}
+                    className="w-8 h-8 rounded-full object-contain shadow-xs flex-shrink-0"
                   />
-                  <div className="text-center flex-1">
-                    <div className="font-serif font-black text-base tracking-tight text-ink uppercase leading-none">
+                  <div className="text-center flex-1 min-w-0">
+                    <div className="font-serif font-black text-sm tracking-tight text-ink uppercase leading-none">
                       Maha Seva Dal
                     </div>
-                    <div className="text-[9px] font-sans font-bold text-[#FF6200] tracking-widest uppercase mt-0.5">
+                    <div className="text-[7.5px] font-sans font-bold text-[#FF6200] tracking-widest uppercase mt-0.5">
                       Estd. 1947 · Unity of People's
                     </div>
-                    <div className="text-[8px] text-muted-editorial font-medium">
+                    <div className="text-[6.5px] text-muted-editorial font-medium">
                       National Socio-Cultural Cadre Registry
                     </div>
                   </div>
-                  <div className="w-9 h-9 rounded-full bg-[#FF6200]/10 border border-[#FF6200]/30 flex flex-col items-center justify-center text-center flex-shrink-0">
-                    <ShieldCheck size={16} className="text-[#FF6200]" />
-                    <span className="text-[6px] font-mono font-bold text-[#FF6200]">1947</span>
+                  <div className="w-7 h-7 rounded-full bg-[#FF6200]/10 border border-[#FF6200]/30 flex flex-col items-center justify-center text-center flex-shrink-0">
+                    <ShieldCheck size={12} className="text-[#FF6200]" />
+                    <span className="text-[5px] font-mono font-bold text-[#FF6200]">1947</span>
                   </div>
                 </div>
 
                 {/* Official Badge Title Bar */}
-                <div className="mt-2 py-0.5 px-2 bg-gradient-to-r from-[#FF6200] to-[#D65000] rounded text-center shadow-xs">
-                  <span className="text-[9px] font-bold text-white tracking-wider uppercase font-sans">
+                <div className="mt-1.5 py-0.5 px-2 bg-gradient-to-r from-[#FF6200] to-[#D65000] rounded text-center shadow-xs">
+                  <span className="text-[7.5px] font-bold text-white tracking-wider uppercase font-sans">
                     Official National Cadre Identity Card
                   </span>
                 </div>
               </div>
 
               {/* Card Body Profile Section */}
-              <div className="p-3.5 sm:p-4 space-y-3 relative flex-1 flex flex-col justify-between">
+              <div className="p-2.5 space-y-2 relative flex-1 flex flex-col justify-between">
                 {/* Watermark when not approved */}
                 {!isApproved && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
-                    <div className="transform -rotate-25 border-2 border-dashed border-amber-600/50 text-amber-800/40 font-mono font-black text-xl px-4 py-1.5 uppercase tracking-widest select-none bg-amber-50/20 rounded-lg">
+                    <div className="transform -rotate-25 border-2 border-dashed border-amber-600/50 text-amber-800/40 font-mono font-black text-base px-3 py-1 uppercase tracking-widest select-none bg-amber-50/20 rounded-lg">
                       PROVISIONAL · PENDING
                     </div>
                   </div>
                 )}
 
                 {/* Top Row: Photo & Core Identifiers */}
-                <div className="flex items-start gap-3.5">
+                <div className="flex items-start gap-2.5">
                   {/* Photo Box */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-[100px] h-[120px] rounded-lg overflow-hidden border-2 border-[#FF6200] bg-surface-soft shadow-md flex items-center justify-center">
+                    <div className="w-[78px] h-[94px] rounded-lg overflow-hidden border-2 border-[#FF6200] bg-surface-soft shadow-xs flex items-center justify-center">
                       {member.photoUrl ? (
                         <img
                           src={member.photoUrl}
@@ -1942,8 +1951,8 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center text-muted-editorial">
-                          <User size={38} className="text-[#FF6200]" />
-                          <span className="text-[8px] mt-1 font-mono uppercase">Member</span>
+                          <User size={30} className="text-[#FF6200]" />
+                          <span className="text-[7px] mt-0.5 font-mono uppercase">Member</span>
                         </div>
                       )}
                     </div>
@@ -1952,28 +1961,28 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                   {/* Identity Details */}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div>
-                      <span className="text-[8px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
                         Cadre Full Name
                       </span>
-                      <div className="font-serif font-black text-sm text-ink leading-tight truncate">
+                      <div className="font-serif font-black text-xs text-ink leading-tight truncate">
                         {member.fullName}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-[8px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
                         Registration ID
                       </span>
-                      <div className="font-mono text-xs font-bold text-[#FF6200] bg-surface-soft px-2 py-0.5 rounded border border-[#e5dac8] inline-block shadow-2xs">
+                      <div className="font-mono text-[10px] font-bold text-[#FF6200] bg-surface-soft px-1.5 py-0.5 rounded border border-[#e5dac8] inline-block shadow-2xs">
                         {member.registrationId}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-[8px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
                         Assigned Wing
                       </span>
-                      <div className="text-[10px] font-bold text-ink bg-[#FF6200]/10 text-[#FF6200] px-2 py-0.5 rounded-md border border-[#FF6200]/25 inline-block">
+                      <div className="text-[8.5px] font-bold text-ink bg-[#FF6200]/10 text-[#FF6200] px-1.5 py-0.5 rounded-md border border-[#FF6200]/25 inline-block truncate max-w-full">
                         {member.wing}
                       </div>
                     </div>
@@ -1981,30 +1990,30 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 </div>
 
                 {/* Information Grid */}
-                <div className="bg-[#faf6ee] rounded-xl p-2.5 border border-[#e6dbc8] grid grid-cols-2 gap-2 text-[10px]">
+                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] grid grid-cols-2 gap-1.5 text-[8.5px]">
                   <div>
-                    <span className="text-[8px] text-muted-editorial uppercase font-bold block">
+                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                       State Unit
                     </span>
                     <span className="font-bold text-ink truncate block">{member.state}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] text-muted-editorial uppercase font-bold block">
+                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                       District Unit
                     </span>
                     <span className="font-bold text-ink truncate block">{member.district}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] text-muted-editorial uppercase font-bold block">
+                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                       Contact Mobile
                     </span>
                     <span className="font-mono font-semibold text-ink block">{member.mobile || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] text-muted-editorial uppercase font-bold block">
+                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                       Blood Group
                     </span>
-                    <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 inline-block">
+                    <span className="font-bold text-rose-700 bg-rose-50 px-1 py-0.2 rounded border border-rose-200 inline-block">
                       {member.bloodGroup || "O+"}
                     </span>
                   </div>
@@ -2013,29 +2022,29 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 {/* Security QR Code & Official Signatory Seal Row */}
                 <div className="flex items-center justify-between pt-1 border-t border-[#e8dfcf]">
                   {/* QR Code Container */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-16 bg-white p-0.5 rounded-lg border border-[#e3d7c5] shadow-xs flex items-center justify-center">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-12 h-12 bg-white p-0.5 rounded-md border border-[#e3d7c5] shadow-xs flex items-center justify-center flex-shrink-0">
                       {qrDataUrl ? (
                         <img src={qrDataUrl} alt="Verify QR" className="w-full h-full object-contain" />
                       ) : (
-                        <div className="text-[8px] text-center text-muted-editorial font-mono">QR</div>
+                        <div className="text-[7px] text-center text-muted-editorial font-mono">QR</div>
                       )}
                     </div>
-                    <div className="text-[8px] leading-tight text-muted-editorial">
+                    <div className="text-[7px] leading-tight text-muted-editorial">
                       <div className="font-bold text-[#FF6200]">SCAN TO VERIFY</div>
                       <div>Official Cadre</div>
-                      <div className="font-mono text-[7px]">mahasevadal.com</div>
+                      <div className="font-mono text-[6px]">mahasevadal.com</div>
                     </div>
                   </div>
 
                   {/* Authorized Seal & Stamp & Signature Container */}
                   {isApproved ? (
-                    <div className="relative flex flex-col items-end min-w-[130px]">
+                    <div className="relative flex flex-col items-end min-w-[110px]">
                       {/* Seal and Signature Overlap Zone */}
-                      <div className="relative w-32 h-14 flex items-center justify-end">
-                        {/* Official Stamp (Authentic Blue Stamped Seal) */}
+                      <div className="relative w-28 h-10 flex items-center justify-end">
+                        {/* Official Stamp */}
                         <div
-                          className="absolute right-[-4px] top-[-8px] pointer-events-none rotate-[-6deg] drop-shadow-xs"
+                          className="absolute right-[-2px] top-[-6px] pointer-events-none rotate-[-6deg] drop-shadow-xs"
                           style={{ mixBlendMode: "multiply" }}
                         >
                           {cardSettings.customSealUrl ? (
@@ -2043,136 +2052,140 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                               src={cardSettings.customSealUrl}
                               alt="Official Seal"
                               crossOrigin="anonymous"
-                              className="w-[58px] h-[58px] object-contain"
+                              className="w-[44px] h-[44px] object-contain"
                             />
                           ) : (
-                            <OfficialSealSvg className="w-[58px] h-[58px]" />
+                            <OfficialSealSvg className="w-[44px] h-[44px]" />
                           )}
                         </div>
 
                         {/* Flowing Authorized Signature */}
-                        <div className="absolute right-2 bottom-[-2px] z-10 pointer-events-none">
+                        <div className="absolute right-1 bottom-[-2px] z-10 pointer-events-none">
                           {cardSettings.customSignatureUrl ? (
                             <img
                               src={cardSettings.customSignatureUrl}
                               alt="Authorized Signature"
                               crossOrigin="anonymous"
-                              className="h-9 max-w-[110px] object-contain drop-shadow-xs"
+                              className="h-7 max-w-[90px] object-contain drop-shadow-xs"
                             />
                           ) : (
-                            <OfficialSignatureSvg className="h-9 w-24 text-blue-900" />
+                            <OfficialSignatureSvg className="h-7 w-20 text-blue-900" />
                           )}
                         </div>
                       </div>
 
                       {/* Signatory Underline & Designation */}
-                      <div className="mt-0.5 border-t-2 border-ink/80 w-28 text-right pt-0.5">
-                        <span className="text-[7.5px] font-bold text-ink uppercase tracking-wider block leading-tight">
+                      <div className="mt-0.5 border-t border-ink/80 w-24 text-right pt-0.5">
+                        <span className="text-[6.5px] font-bold text-ink uppercase tracking-wider block leading-tight truncate">
                           {cardSettings.signatoryName || "Authorized Signatory"}
                         </span>
-                        <span className="text-[6px] text-muted-editorial block leading-tight">
+                        <span className="text-[5.5px] text-muted-editorial block leading-tight truncate">
                           {cardSettings.signatoryTitle || "Central Executive Committee"}
                         </span>
                       </div>
                     </div>
                   ) : (
                     /* Provisional Unapproved Indicator */
-                    <div className="text-right flex flex-col items-end min-w-[120px]">
-                      <div className="w-12 h-12 rounded-full border-2 border-dashed border-amber-600/70 flex flex-col items-center justify-center text-center p-0.5 rotate-[-4deg] bg-amber-50/60">
-                        <span className="text-[5px] font-black uppercase text-amber-800 leading-tight">
+                    <div className="text-right flex flex-col items-end min-w-[100px]">
+                      <div className="w-10 h-10 rounded-full border-2 border-dashed border-amber-600/70 flex flex-col items-center justify-center text-center p-0.5 rotate-[-4deg] bg-amber-50/60">
+                        <span className="text-[4.5px] font-black uppercase text-amber-800 leading-tight">
                           MAHA SEVA DAL
                         </span>
-                        <span className="text-[6px] font-black uppercase text-amber-700">PROVISIONAL</span>
-                        <span className="text-[4.5px] font-mono text-amber-800 leading-tight">PENDING APPROVAL</span>
+                        <span className="text-[5px] font-black uppercase text-amber-700">PROVISIONAL</span>
+                        <span className="text-[4px] font-mono text-amber-800 leading-tight">PENDING</span>
                       </div>
-                      <div className="mt-1 border-t border-dashed border-ink/30 w-24 text-right pt-0.5">
-                        <span className="text-[7px] font-bold text-muted-editorial uppercase tracking-wider block">
+                      <div className="mt-0.5 border-t border-dashed border-ink/30 w-20 text-right pt-0.5">
+                        <span className="text-[6px] font-bold text-muted-editorial uppercase tracking-wider block">
                           Pending Sanction
                         </span>
-                        <span className="text-[5.5px] text-muted-editorial block">Awaiting Committee</span>
+                        <span className="text-[5px] text-muted-editorial block">Awaiting Committee</span>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Bottom Security Band (Only Saffron Text) */}
-              <div className="py-1.5 px-3 bg-[#3d3832] flex items-center justify-center text-center text-[7.5px] font-mono">
+              {/* Bottom Security Band */}
+              <div className="py-1 px-2 bg-[#3d3832] flex items-center justify-center text-center text-[7px] font-mono">
                 <span className="text-[#FF9933] font-bold tracking-widest uppercase">
                   UNITY OF PEOPLE'S
                 </span>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
         {/* ══════════════ 2. BACK SIDE ══════════════ */}
         {(activeView === "both" || activeView === "back") && (
-          <div className="flex flex-col items-center flex-1 w-full max-w-[360px] sm:max-w-[394px]">
-          {/* Back Header Badge */}
-          <div className="flex items-center justify-center gap-1.5 w-full max-w-[344px] sm:max-w-[370px] px-3.5 py-1.5 mb-2.5 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
-            <FileText size={14} />
-            <span>BACK SIDE</span>
-          </div>
+          <div className="flex flex-col items-center flex-1 w-full max-w-[315px]">
+            {/* Back Header Badge */}
+            <div className="flex items-center justify-center gap-1.5 w-full max-w-[315px] px-3 py-1 mb-2 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
+              <FileText size={13} />
+              <span>BACK SIDE</span>
+            </div>
 
-          {/* Physical PVC Card Container - Back */}
-          <div className="p-1 sm:p-2.5 bg-surface-soft/60 rounded-2xl sm:rounded-3xl border border-hairline shadow-inner w-full max-w-[356px] sm:max-w-[394px] flex flex-col justify-center items-center">
+            {/* Physical PVC Card - Back (70mm x 100mm -> 315px x 450px, 7:10 ratio) */}
             <div
               id="msd-pvc-card-back"
-              className="w-full max-w-[344px] sm:max-w-[370px] min-h-[500px] sm:h-[560px] flex flex-col justify-between bg-white rounded-xl sm:rounded-2xl border-2 border-[#d5c3aa] shadow-xl overflow-hidden relative text-ink font-sans select-none"
+              className="w-full max-w-[315px] h-[450px] aspect-[7/10] flex flex-col justify-between bg-white rounded-2xl border-2 border-[#d5c3aa] shadow-xl hover:shadow-2xl transition-shadow overflow-hidden relative text-ink font-sans select-none"
               style={{
                 backgroundImage:
                   "radial-gradient(#faf7ee 1px, transparent 1px), linear-gradient(135deg, #ffffff 0%, #faf8f2 50%, #f4ede0 100%)",
                 backgroundSize: "20px 20px, 100% 100%",
               }}
             >
+              {/* Subtle PVC Gloss Finish */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/20 rounded-2xl z-30" />
+
               {/* Lanyard Punch Slot Simulation */}
-              <div className="pt-2 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
-                <div className="w-14 h-2.5 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
+              <div className="pt-1.5 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
+                <div className="w-11 h-2 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
               </div>
 
               {/* Indian National Tricolor Ribbon */}
-              <div className="h-2 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
+              <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
 
               {/* Back Header */}
-              <div className="px-4 pt-3 pb-2 border-b border-[#e8ddcb] bg-gradient-to-b from-white to-[#faf6ef]">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+              <div className="px-3 pt-2 pb-1.5 border-b border-[#e8ddcb] bg-gradient-to-b from-white to-[#faf6ef]">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5">
                     <img
-                      src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
+                      src="/logo.png"
                       alt="MSD Logo"
                       crossOrigin="anonymous"
-                      className="w-9 h-9 rounded-full object-contain shadow-xs flex-shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
+                      }}
+                      className="w-7 h-7 rounded-full object-contain shadow-xs flex-shrink-0"
                     />
                     <div>
-                      <div className="font-serif font-black text-sm tracking-tight text-ink uppercase leading-none">
+                      <div className="font-serif font-black text-xs tracking-tight text-ink uppercase leading-none">
                         Maha Seva Dal
                       </div>
-                      <div className="text-[8.5px] font-sans font-bold text-[#FF6200] tracking-wider uppercase mt-0.5">
+                      <div className="text-[7.5px] font-sans font-bold text-[#FF6200] tracking-wider uppercase mt-0.5">
                         Cadre Particulars & Verification
                       </div>
                     </div>
                   </div>
-                  <div className="px-2 py-0.5 rounded bg-[#FF6200]/10 border border-[#FF6200]/30 text-[8px] font-mono font-bold text-[#FF6200] uppercase tracking-wider">
+                  <div className="px-1.5 py-0.5 rounded bg-[#FF6200]/10 border border-[#FF6200]/30 text-[7px] font-mono font-bold text-[#FF6200] uppercase tracking-wider">
                     Reverse Side
                   </div>
                 </div>
 
-                <div className="mt-2 py-0.5 px-2 bg-[#2c2824] rounded text-center shadow-xs">
-                  <span className="text-[8px] font-bold text-[#FF9933] tracking-widest uppercase font-mono">
+                <div className="mt-1.5 py-0.5 px-2 bg-[#2c2824] rounded text-center shadow-xs">
+                  <span className="text-[7px] font-bold text-[#FF9933] tracking-widest uppercase font-mono">
                     Official Cadre Record & Directives
                   </span>
                 </div>
               </div>
 
               {/* Back Content Body */}
-              <div className="p-3.5 space-y-2.5 text-ink flex-1 flex flex-col justify-between">
+              <div className="p-2.5 space-y-1.5 text-ink flex-1 flex flex-col justify-between">
                 {/* 1. Family & Personal Particulars Box */}
-                <div className="bg-[#faf6ee] rounded-xl p-2.5 border border-[#e6dbc8] space-y-1.5 text-[9.5px]">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] space-y-1 text-[8.5px]">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <div>
-                      <span className="text-[7.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                         Father's / Husband's Name
                       </span>
                       <span className="font-bold text-ink truncate block">
@@ -2180,7 +2193,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[7.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                         Date of Birth & Age
                       </span>
                       <span className="font-bold text-ink block font-mono">
@@ -2189,9 +2202,9 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-[#ede3d3]">
+                  <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#ede3d3]">
                     <div>
-                      <span className="text-[7.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                         Gender
                       </span>
                       <span className="font-semibold text-ink block">
@@ -2199,7 +2212,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[7.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
                         Emergency / WhatsApp
                       </span>
                       <span className="font-mono font-semibold text-ink block">
@@ -2210,17 +2223,17 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 </div>
 
                 {/* 2. Permanent Residential Address Box */}
-                <div className="bg-[#faf6ee] rounded-xl p-2.5 border border-[#e6dbc8]">
-                  <div className="flex items-center gap-1.5 mb-1 text-[#FF6200]">
-                    <MapPin size={11} className="flex-shrink-0" />
-                    <span className="text-[7.5px] text-muted-editorial uppercase font-bold tracking-wider">
+                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8]">
+                  <div className="flex items-center gap-1 mb-0.5 text-[#FF6200]">
+                    <MapPin size={10} className="flex-shrink-0" />
+                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold tracking-wider">
                       Permanent Residential Address
                     </span>
                   </div>
-                  <p className="text-[9px] text-ink font-medium leading-relaxed">
+                  <p className="text-[8px] text-ink font-medium leading-snug line-clamp-2">
                     {member.address || "Permanent Registered Address on Record"}
                   </p>
-                  <div className="text-[8px] text-muted-editorial font-semibold mt-1.5 flex flex-wrap gap-x-2 pt-1 border-t border-[#ede3d3]">
+                  <div className="text-[7px] text-muted-editorial font-semibold mt-1 flex flex-wrap gap-x-1.5 pt-0.5 border-t border-[#ede3d3]">
                     {member.taluk && <span>Taluk: {member.taluk}</span>}
                     <span>Dist: {member.district}</span>
                     <span>State: {member.state}</span>
@@ -2229,19 +2242,19 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                     )}
                   </div>
                   {member.email && (
-                    <div className="text-[7.5px] text-muted-editorial mt-1">
+                    <div className="text-[6.5px] text-muted-editorial mt-0.5 truncate">
                       Email: <span className="font-mono text-ink">{member.email}</span>
                     </div>
                   )}
                 </div>
 
                 {/* 3. Official Terms & Directives */}
-                <div className="p-2 bg-white/70 rounded-lg border border-[#e8dfcf] space-y-1 text-[7.5px] text-muted-editorial leading-tight">
-                  <div className="font-bold text-ink uppercase text-[7.5px] flex items-center gap-1">
-                    <ShieldCheck size={11} className="text-emerald-600 flex-shrink-0" />
+                <div className="p-1.5 bg-white/70 rounded-md border border-[#e8dfcf] space-y-0.5 text-[6.5px] text-muted-editorial leading-tight">
+                  <div className="font-bold text-ink uppercase text-[6.5px] flex items-center gap-1">
+                    <ShieldCheck size={10} className="text-emerald-600 flex-shrink-0" />
                     <span>Cadre Directives & Terms</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-[7px]">
+                  <ul className="list-disc list-inside space-y-0.5 text-[6px]">
                     <li>This card is non-transferable property of Maha Seva Dal (Estd. 1947).</li>
                     <li>Authorized for civic welfare, social upliftment & relief operations.</li>
                     <li>If found, please return to Central Secretariat or nearest post box.</li>
@@ -2249,37 +2262,36 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 </div>
 
                 {/* 4. 1D Barcode & Validity Row */}
-                <div className="flex items-center justify-between pt-1 border-t border-[#e8dfcf] text-[8px]">
+                <div className="flex items-center justify-between pt-1 border-t border-[#e8dfcf] text-[7.5px]">
                   <div>
-                    <div className="bg-white px-2 py-0.5 rounded border border-[#e5dac8] shadow-2xs inline-block">
-                      <BarcodeSvg code={member.registrationId} className="h-6 w-32" />
+                    <div className="bg-white px-1.5 py-0.5 rounded border border-[#e5dac8] shadow-2xs inline-block">
+                      <BarcodeSvg code={member.registrationId} className="h-4.5 w-24" />
                     </div>
-                    <div className="font-mono text-[7px] text-muted-editorial font-bold mt-0.5">
+                    <div className="font-mono text-[6.5px] text-muted-editorial font-bold mt-0.5">
                       REG: {member.registrationId}
                     </div>
                   </div>
 
                   <div className="text-right space-y-0.5">
-                    <div className="text-[7px] text-muted-editorial">
+                    <div className="text-[6.5px] text-muted-editorial">
                       ISSUED: <span className="font-mono font-bold text-ink">{issueDate}</span>
                     </div>
-                    <div className="text-[6.5px] font-bold text-[#FF6200] uppercase tracking-tight">
+                    <div className="text-[6px] font-bold text-[#FF6200] uppercase tracking-tight">
                       Central Exec. Committee
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom Security Band (Only Saffron Text) */}
-              <div className="py-1.5 px-3 bg-[#3d3832] flex items-center justify-center text-center text-[7.5px] font-mono">
+              {/* Bottom Security Band */}
+              <div className="py-1 px-2 bg-[#3d3832] flex items-center justify-center text-center text-[7px] font-mono">
                 <span className="text-[#FF9933] font-bold tracking-widest uppercase">
                   DISCIPLINE · SERVICE · UNITY
                 </span>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       {/* ─── ACTION BUTTONS (DOWNLOAD PDF & IMAGES) ─── */}
@@ -2290,16 +2302,16 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
             <span className="font-bold text-[#FF6200]">Card Dimensions:</span>
             <span className="font-mono font-bold text-ink">70 mm × 100 mm (2.63" × 3.88")</span>
             <span className="text-muted-editorial/40 hidden sm:inline">•</span>
-            <span className="text-[11px] block sm:inline">Standard PVC ID Holder & Lamination Pouch Size</span>
+            <span className="text-[11px] block sm:inline">Standard PVC ID Holder & Lamination Pouch Size • 300 DPI Print Standard</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 1. Download PDF (Both Sides) */}
             <button
-              onClick={handleDownloadPdf}
+              onClick={() => handleDownloadPdf("both")}
               disabled={downloadingPdf || downloading}
               className="bg-[#1e3a8a] hover:bg-[#172554] text-white text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
-              title="Download official 1-page PDF certificate with Front & Back sides side-by-side"
+              title="Download official clean PDF containing Front & Back ID cards side-by-side (zero extra markings)"
             >
               {downloadingPdf ? (
                 <>
@@ -2319,7 +2331,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
               onClick={() => handleDownloadImage("both")}
               disabled={downloading || downloadingPdf}
               className="btn-primary-coral text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
-              title="Download high-resolution image showing both Front and Back sides side-by-side"
+              title="Download clean high-resolution PNG showing Front and Back ID cards side-by-side"
             >
               {downloading ? (
                 <>
@@ -2335,27 +2347,6 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
             </button>
           </div>
 
-          {/* Direct Single Side PNG Downloads */}
-          <div className="flex items-center justify-center gap-3 text-xs text-muted-editorial pt-1 border-t border-hairline/60">
-            <span>Single Side PNG:</span>
-            <button
-              type="button"
-              onClick={() => handleDownloadImage("front")}
-              disabled={downloading || downloadingPdf}
-              className="text-[#FF6200] hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
-            >
-              <span>Front Side Only</span>
-            </button>
-            <span className="text-muted-editorial/40">•</span>
-            <button
-              type="button"
-              onClick={() => handleDownloadImage("back")}
-              disabled={downloading || downloadingPdf}
-              className="text-[#FF6200] hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
-            >
-              <span>Back Side Only</span>
-            </button>
-          </div>
         </div>
       )}
     </div>

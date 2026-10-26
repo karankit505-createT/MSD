@@ -65,4 +65,27 @@ describe("DigitalIdCard Component", () => {
     expect(screen.queryByText(/Download PDF/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Download PNG/i)).not.toBeInTheDocument();
   });
+
+  it("should export addPaddingToCardDataUrl and combineCapturedCards", async () => {
+    const { addPaddingToCardDataUrl, combineCapturedCards, generateCombinedIdCardCanvas, setPng300Dpi } = await import("./DigitalIdCard");
+    expect(typeof addPaddingToCardDataUrl).toBe("function");
+    expect(typeof combineCapturedCards).toBe("function");
+    expect(typeof generateCombinedIdCardCanvas).toBe("function");
+    expect(typeof setPng300Dpi).toBe("function");
+
+    // Empty input should safely return empty string
+    const result = await addPaddingToCardDataUrl("");
+    expect(result).toBe("");
+  });
+
+  it("should embed 300 DPI pHYs chunk into PNG data URLs", async () => {
+    const { setPng300Dpi } = await import("./DigitalIdCard");
+    const output = setPng300Dpi(sampleQr, 300);
+    expect(output).toContain("data:image/png;base64,");
+
+    // Decode and verify the pHYs chunk presence
+    const base64 = output.replace("data:image/png;base64,", "");
+    const binary = atob(base64);
+    expect(binary.includes("pHYs")).toBe(true);
+  });
 });

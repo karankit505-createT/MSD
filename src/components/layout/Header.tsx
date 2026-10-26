@@ -143,7 +143,7 @@ const Header = () => {
       {/* Editorial Top Contact Bar */}
       <div className="hidden lg:flex justify-between items-center px-8 py-1.5 bg-surface-soft border-b border-hairline text-xs text-muted-editorial">
         <div className="flex items-center gap-2">
-          <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-4 h-4 rounded-full object-contain" />
+          <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-4 h-4 rounded-full object-contain" />
           <span className="font-serif italic text-ink font-semibold">Maha Seva Dal</span>
           <span className="text-muted-soft">| Est. 1947 — Unity, Service & Empowerment</span>
         </div>
@@ -165,13 +165,13 @@ const Header = () => {
         {/* Brand Logo & Wordmark — Cloudinary CDN Logo */}
         <Link to="/" onClick={handleNavClick} className="flex items-center gap-3 group shrink-0">
           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
-            <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+            <img src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png" alt="Maha Seva Dal Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif text-lg font-semibold text-ink tracking-tight group-hover:text-[#FF6200] transition-colors leading-none" title="'महा सेवा दल">
+            <span className="font-serif text-lg font-semibold text-ink tracking-tight group-hover:text-[#FF6200] transition-colors leading-none" title="महा सेवा दल">
               Maha Seva Dal
             </span>
-            <span className="text-[10px] text-muted-editorial uppercase tracking-widest leading-tight mt-0.5 font-semibold text-[#FF6200]" title="'महा सेवा दल">
+            <span className="text-[10px] text-muted-editorial uppercase tracking-widest leading-tight mt-0.5 font-semibold text-[#FF6200]" title="महा सेवा दल">
               மஹா சேவா தளம் · 1947
             </span>
           </div>
@@ -340,7 +340,7 @@ const Header = () => {
           <div className="flex items-center justify-between px-5 py-3 border-b border-hairline bg-canvas">
             <div className="flex items-center gap-2.5">
               <img
-                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792229405/msd/brand/logo.png"
+                src="https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png"
                 alt="Maha Seva Dal Logo"
                 className="w-8 h-8 rounded-full object-contain"
               />
