@@ -10,6 +10,7 @@ import {
   RotateCw,
   Building2,
 } from "lucide-react";
+import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
 import { getApiUrl } from "@/config/api";
@@ -24,11 +25,16 @@ export interface DigitalIdCardProps {
     gender?: string;
     mobile?: string;
     whatsapp?: string;
+    // Emergency contact fields
+    emergencyNumber?: string;
+    emergencyRelation?: string;
     email?: string;
     bloodGroup?: string;
     photoUrl?: string;
     state: string;
     district: string;
+    assembly?: string;
+    zone?: string;
     taluk?: string;
     address?: string;
     pincode?: string;
@@ -47,6 +53,7 @@ export interface DigitalIdCardProps {
   stacked?: boolean;
   defaultView?: "both" | "front" | "back";
   showViewToggle?: boolean;
+  compact?: boolean;
 }
 
 export interface CardSettings {
@@ -93,6 +100,25 @@ const safeLoadImage = (src: string, timeoutMs = 2500): Promise<HTMLImageElement 
 /**
  * Official SVG Seal Stamp Component (Realistic Blue Rubber Stamp)
  */
+/**
+ * Helper to validate and return standardized blood group or null if unspecified
+ */
+export const getValidBloodGroup = (bloodGroup?: string): string | null => {
+  if (!bloodGroup) return null;
+  const bg = bloodGroup.trim();
+  if (
+    !bg ||
+    bg.toLowerCase() === "don't know" ||
+    bg.toLowerCase() === "not specified" ||
+    bg.toLowerCase() === "not provided" ||
+    bg === "—" ||
+    bg === "-"
+  ) {
+    return null;
+  }
+  return bg;
+};
+
 export const OfficialSealSvg: React.FC<{ className?: string; color?: string }> = ({
   className = "w-16 h-16",
   color = "#1d4ed8",
@@ -314,13 +340,29 @@ export const BarcodeSvg: React.FC<{ code: string; className?: string }> = ({
     const x = currentX;
     currentX += w;
     if (idx % 2 === 0) {
-      return <rect key={idx} x={x} y="0" width={w} height="28" fill="#111827" />;
+      return (
+        <rect
+          key={idx}
+          x={x}
+          y="0"
+          width={w}
+          height="28"
+          fill="#111827"
+          shapeRendering="crispEdges"
+        />
+      );
     }
     return null;
   });
 
   return (
-    <svg viewBox={`0 0 ${currentX} 28`} preserveAspectRatio="none" className={className}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${currentX} 28`}
+      preserveAspectRatio="none"
+      className={className}
+      style={{ display: "block" }}
+    >
       {elements}
     </svg>
   );
@@ -525,17 +567,22 @@ const resolveBrandLogo = async (): Promise<{
   img: HTMLImageElement | null;
   circularDataUrl: string;
 }> => {
+  // First attempt to load local /logo.png directly
+  let img = await safeLoadImage("/logo.png", 2000);
+
   const brandLogoUrl =
-    "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
-  let proxyLogoUrl = brandLogoUrl;
-  if (proxyLogoUrl.startsWith("http") && !proxyLogoUrl.includes("/api/members/proxy-photo")) {
-    proxyLogoUrl = getApiUrl(
-      `/api/members/proxy-photo?url=${encodeURIComponent(brandLogoUrl)}`
-    );
-  }
-  let img = await safeLoadImage(proxyLogoUrl, 2500);
+    "https://res.cloudinary.com/wq9znxvs/image/upload/v1793441798/msd/brand/logo.png";
   if (!img) {
-    img = await safeLoadImage(brandLogoUrl, 2000);
+    let proxyLogoUrl = brandLogoUrl;
+    if (proxyLogoUrl.startsWith("http") && !proxyLogoUrl.includes("/api/members/proxy-photo")) {
+      proxyLogoUrl = getApiUrl(
+        `/api/members/proxy-photo?url=${encodeURIComponent(brandLogoUrl)}`
+      );
+    }
+    img = await safeLoadImage(proxyLogoUrl, 2500);
+    if (!img) {
+      img = await safeLoadImage(brandLogoUrl, 2000);
+    }
   }
 
   let circularDataUrl = "";
@@ -569,10 +616,12 @@ const resolveBrandLogo = async (): Promise<{
 export const generateIdCardCanvas = async (
   member: DigitalIdCardProps["member"],
   qrDataUrl: string,
-  settings?: CardSettings
+  settings?: CardSettings,
+  hideSlotPill = true
 ): Promise<string> => {
   try {
-    const isApproved = (member.status || "").toUpperCase() === "APPROVED";
+    const isPending = (member.status || "").toUpperCase() === "PENDING";
+    const isApproved = !isPending;
 
     // 1. Resolve QR code image safely
     let qrImg: HTMLImageElement | null = null;
@@ -597,7 +646,7 @@ export const generateIdCardCanvas = async (
 
     // 3. Resolve Custom Seal Image (if configured)
     let sealImg: HTMLImageElement | null = null;
-    if (isApproved && settings?.customSealUrl) {
+    if (settings?.customSealUrl) {
       let loadSealUrl = settings.customSealUrl;
       if (loadSealUrl.startsWith("http") && !loadSealUrl.includes("/api/members/proxy-photo")) {
         loadSealUrl = getApiUrl(`/api/members/proxy-photo?url=${encodeURIComponent(settings.customSealUrl)}`);
@@ -608,16 +657,20 @@ export const generateIdCardCanvas = async (
       }
     }
 
-    // 4. Resolve Custom Signature Image (if configured)
+    // 4. Resolve Custom Signature Image (defaults to /signature.png)
     let sigImg: HTMLImageElement | null = null;
-    if (isApproved && settings?.customSignatureUrl) {
-      let loadSigUrl = settings.customSignatureUrl;
+    const sigUrlToLoad = settings?.customSignatureUrl || "/signature.png";
+    if (sigUrlToLoad) {
+      let loadSigUrl = sigUrlToLoad;
       if (loadSigUrl.startsWith("http") && !loadSigUrl.includes("/api/members/proxy-photo")) {
-        loadSigUrl = getApiUrl(`/api/members/proxy-photo?url=${encodeURIComponent(settings.customSignatureUrl)}`);
+        loadSigUrl = getApiUrl(`/api/members/proxy-photo?url=${encodeURIComponent(sigUrlToLoad)}`);
       }
       sigImg = await safeLoadImage(loadSigUrl, 2000);
-      if (!sigImg && settings.customSignatureUrl !== loadSigUrl) {
-        sigImg = await safeLoadImage(settings.customSignatureUrl, 2000);
+      if (!sigImg && sigUrlToLoad !== loadSigUrl) {
+        sigImg = await safeLoadImage(sigUrlToLoad, 2000);
+      }
+      if (!sigImg) {
+        sigImg = await safeLoadImage("/signature.png", 2000);
       }
     }
 
@@ -627,10 +680,12 @@ export const generateIdCardCanvas = async (
     // Function to render card on canvas
     const drawCard = (includePhoto: boolean): string => {
       const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = 1200;
+      // Standard 70 mm x 100 mm at 300 DPI = 827 x 1181 px
+      canvas.width = 827;
+      canvas.height = 1181;
       const ctx = canvas.getContext("2d");
       if (!ctx) return "";
+      ctx.scale(827 / 800, 1181 / 1200);
 
       // 1. Background
       const bgGrad = ctx.createLinearGradient(0, 0, 800, 1200);
@@ -645,15 +700,17 @@ export const generateIdCardCanvas = async (
       ctx.lineWidth = 8;
       ctx.strokeRect(4, 4, 792, 1192);
 
-      // 2. Lanyard Slot
+      // 2. Lanyard Slot (punch area margin preserved, pill mockup hidden for print)
       ctx.fillStyle = "#faf5ea";
       ctx.fillRect(8, 8, 784, 50);
-      ctx.fillStyle = "#4a443c";
-      ctx.beginPath();
-      ctx.arc(330, 28, 10, Math.PI / 2, (Math.PI * 3) / 2);
-      ctx.arc(470, 28, 10, (Math.PI * 3) / 2, Math.PI / 2);
-      ctx.closePath();
-      ctx.fill();
+      if (!hideSlotPill) {
+        ctx.fillStyle = "#4a443c";
+        ctx.beginPath();
+        ctx.arc(330, 28, 10, Math.PI / 2, (Math.PI * 3) / 2);
+        ctx.arc(470, 28, 10, (Math.PI * 3) / 2, Math.PI / 2);
+        ctx.closePath();
+        ctx.fill();
+      }
 
       // 3. Indian National Tricolor Ribbon
       ctx.fillStyle = "#FF6200";
@@ -721,7 +778,7 @@ export const generateIdCardCanvas = async (
 
       ctx.fillStyle = "#FF6200";
       ctx.font = "bold 15px sans-serif";
-      ctx.fillText("ESTD. 1947 · UNITY OF PEOPLE'S", 400, 165);
+      ctx.fillText("ESTD. 1947 · UNITY OF PEOPLE", 400, 165);
 
       ctx.fillStyle = "#736b5e";
       ctx.font = "13px sans-serif";
@@ -820,7 +877,7 @@ export const generateIdCardCanvas = async (
       ctx.textAlign = "left";
 
       // Full Name
-      ctx.fillStyle = "#8a7e70";
+      ctx.fillStyle = "#554e44";
       ctx.font = "bold 13px sans-serif";
       ctx.fillText("CADRE FULL NAME", 300, 305);
       ctx.fillStyle = "#1b1b1b";
@@ -828,7 +885,7 @@ export const generateIdCardCanvas = async (
       ctx.fillText(member.fullName, 300, 340);
 
       // Registration ID
-      ctx.fillStyle = "#8a7e70";
+      ctx.fillStyle = "#554e44";
       ctx.font = "bold 13px sans-serif";
       ctx.fillText("REGISTRATION ID", 300, 385);
       ctx.fillStyle = "#faede3";
@@ -836,53 +893,91 @@ export const generateIdCardCanvas = async (
       ctx.strokeStyle = "#e8d2be";
       ctx.lineWidth = 2;
       ctx.strokeRect(300, 395, 380, 40);
-      ctx.fillStyle = "#FF6200";
+      ctx.fillStyle = "#D65000";
       ctx.font = "bold 22px monospace";
       ctx.fillText(member.registrationId, 315, 423);
 
-      // Assigned Wing
-      ctx.fillStyle = "#8a7e70";
+      // Assigned Wing (Badge with Peach Background, subtle border, Black text font matching Screenshot 1)
+      ctx.fillStyle = "#554e44";
       ctx.font = "bold 13px sans-serif";
       ctx.fillText("ASSIGNED WING", 300, 475);
-      ctx.fillStyle = "#FF6200";
-      ctx.font = "bold 22px sans-serif";
-      ctx.fillText(member.wing, 300, 508);
 
-      // Jurisdiction Box
+      ctx.font = "bold 20px sans-serif";
+      const wingMetrics = ctx.measureText(member.wing);
+      const wingBadgeW = Math.min(wingMetrics.width + 24, 450);
+      const wingBadgeH = 36;
+      const wingBadgeX = 300;
+      const wingBadgeY = 486;
+
+      ctx.beginPath();
+      ctx.roundRect(wingBadgeX, wingBadgeY, wingBadgeW, wingBadgeH, 6);
+      ctx.fillStyle = "#fff7ed";
+      ctx.fill();
+      ctx.strokeStyle = "#fed7aa";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = "#1b1b1b";
+      ctx.fillText(member.wing, wingBadgeX + 12, wingBadgeY + 25);
+
+      // Jurisdiction Box (Expanded to 195px to accommodate Assembly & Zone)
       ctx.fillStyle = "#faf5ea";
-      ctx.fillRect(50, 570, 700, 155);
+      ctx.fillRect(50, 538, 700, 195);
       ctx.strokeStyle = "#e3d7c5";
       ctx.lineWidth = 2;
-      ctx.strokeRect(50, 570, 700, 155);
+      ctx.strokeRect(50, 538, 700, 195);
 
-      // Columns
-      ctx.fillStyle = "#8a7e70";
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillText("STATE UNIT", 75, 605);
+      // Row 1: State & District Unit
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("STATE UNIT", 75, 564);
       ctx.fillStyle = "#1b1b1b";
-      ctx.font = "bold 20px sans-serif";
-      ctx.fillText(member.state, 75, 635);
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(member.state, 75, 588);
 
-      ctx.fillStyle = "#8a7e70";
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillText("DISTRICT UNIT", 420, 605);
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("DISTRICT UNIT", 420, 564);
       ctx.fillStyle = "#1b1b1b";
-      ctx.font = "bold 20px sans-serif";
-      ctx.fillText(member.district, 420, 635);
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(member.district, 420, 588);
 
-      ctx.fillStyle = "#8a7e70";
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillText("CONTACT MOBILE", 75, 675);
+      // Row 2: Assembly Constituency & Zone / Region
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("ASSEMBLY CONSTITUENCY", 75, 622);
       ctx.fillStyle = "#1b1b1b";
-      ctx.font = "bold 18px monospace";
-      ctx.fillText(member.mobile || "—", 75, 703);
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(member.assembly || "—", 75, 646);
 
-      ctx.fillStyle = "#8a7e70";
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillText("BLOOD GROUP", 420, 675);
-      ctx.fillStyle = "#be123c";
-      ctx.font = "bold 20px sans-serif";
-      ctx.fillText(member.bloodGroup || "Not Specified", 420, 703);
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("ZONE / REGION", 420, 622);
+      ctx.fillStyle = "#1b1b1b";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(member.zone || "—", 420, 646);
+
+      // Row 3: Contact Mobile & Blood Group
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("CONTACT MOBILE", 75, 680);
+      ctx.fillStyle = "#1b1b1b";
+      ctx.font = "bold 17px monospace";
+      ctx.fillText(format10DigitMobile(member.mobile), 75, 704);
+
+      ctx.fillStyle = "#554e44";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText("BLOOD GROUP", 420, 680);
+      const validBg = getValidBloodGroup(member.bloodGroup);
+      if (validBg) {
+        ctx.fillStyle = "#be123c";
+        ctx.font = "bold 18px sans-serif";
+        ctx.fillText(validBg, 420, 704);
+      } else {
+        ctx.fillStyle = "#1b1b1b";
+        ctx.font = "bold 18px sans-serif";
+        ctx.fillText("—", 420, 704);
+      }
 
       // Security QR Code
       ctx.fillStyle = "#ffffff";
@@ -911,91 +1006,39 @@ export const generateIdCardCanvas = async (
       ctx.fillText("mahasevadal.com", 285, 873);
 
       // ─── SEAL & SIGNATURE SECTION ─────────────────────────────
-      if (isApproved) {
-        // 1. Official Seal Stamp
-        if (sealImg && sealImg.width > 0) {
-          ctx.save();
-          ctx.translate(635, 850);
-          ctx.rotate(-0.08);
-          ctx.drawImage(sealImg, -70, -70, 140, 140);
-          ctx.restore();
-        } else {
-          drawOfficialSeal(ctx, 635, 850);
-        }
-
-        // 2. Official Authorized Signature (positioned naturally above the line)
-        if (sigImg && sigImg.width > 0) {
-          ctx.drawImage(sigImg, 510, 915, 180, 68);
-        } else {
-          drawVectorSignature(ctx, 490, 915, "#1e3a8a");
-        }
-
-        // 3. Signatory Line
-        ctx.strokeStyle = "#1b1b1b";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(470, 985);
-        ctx.lineTo(750, 985);
-        ctx.stroke();
-
-        ctx.fillStyle = "#1b1b1b";
-        ctx.font = "bold 15px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(settings?.signatoryName || "Authorized Signatory", 610, 1010);
-        ctx.font = "12px sans-serif";
-        ctx.fillStyle = "#736b5e";
-        ctx.fillText(settings?.signatoryTitle || "Central Executive Committee", 610, 1030);
+      // Always draw Official Seal Stamp & Authorized Signature
+      if (sealImg && sealImg.width > 0) {
+        ctx.save();
+        ctx.translate(635, 850);
+        ctx.rotate(-0.08);
+        ctx.drawImage(sealImg, -70, -70, 140, 140);
+        ctx.restore();
       } else {
-        // PROVISIONAL / PENDING APPROVAL INDICATOR
-        ctx.save();
-        ctx.translate(620, 860);
-        ctx.rotate(-0.05);
-
-        ctx.strokeStyle = "#d97706";
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.arc(0, 0, 65, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = "#b45309";
-        ctx.font = "bold 11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("MAHA SEVA DAL", 0, -22);
-        ctx.font = "bold 13px sans-serif";
-        ctx.fillText("PROVISIONAL", 0, 2);
-        ctx.font = "bold 10px monospace";
-        ctx.fillText("PENDING SANCTION", 0, 24);
-        ctx.restore();
-
-        // Signatory Line (dashed)
-        ctx.strokeStyle = "#a8a29e";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 4]);
-        ctx.beginPath();
-        ctx.moveTo(480, 985);
-        ctx.lineTo(750, 985);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = "#78716c";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("Verification In Progress", 615, 1010);
-        ctx.font = "11px sans-serif";
-        ctx.fillText("Awaiting Committee Approval", 615, 1030);
-
-        // Watermark across center
-        ctx.save();
-        ctx.translate(400, 620);
-        ctx.rotate(-0.38);
-        ctx.fillStyle = "rgba(217, 119, 6, 0.16)";
-        ctx.font = "bold 44px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("PROVISIONAL · PENDING APPROVAL", 0, 0);
-        ctx.restore();
+        drawOfficialSeal(ctx, 635, 850);
       }
+
+      // 2. Official Authorized Signature (positioned naturally above the line)
+      if (sigImg && sigImg.width > 0) {
+        ctx.drawImage(sigImg, 510, 915, 180, 68);
+      } else {
+        drawVectorSignature(ctx, 490, 915, "#1e3a8a");
+      }
+
+      // 3. Signatory Line
+      ctx.strokeStyle = "#1b1b1b";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(470, 985);
+      ctx.lineTo(750, 985);
+      ctx.stroke();
+
+      ctx.fillStyle = "#1b1b1b";
+      ctx.font = "bold 15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(settings?.signatoryName || "Authorized Signatory", 610, 1010);
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "#736b5e";
+      ctx.fillText(settings?.signatoryTitle || "Central Executive Committee", 610, 1030);
 
       // Bottom Strip (Only Saffron Text)
       ctx.fillStyle = "#2c2824";
@@ -1004,7 +1047,7 @@ export const generateIdCardCanvas = async (
       ctx.fillStyle = "#FF9933";
       ctx.font = "bold 16px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("UNITY OF PEOPLE'S", 400, 1175);
+      ctx.fillText("UNITY OF PEOPLE", 400, 1175);
 
       return setPng300Dpi(canvas.toDataURL("image/png"), 300);
     };
@@ -1039,49 +1082,36 @@ export const generateIdCardPdf = async (
   settings?: CardSettings,
   capturedFrontUrl?: string,
   capturedBackUrl?: string,
-  mode: "both" | "front" | "back" = "both"
+  _mode: "both" | "front" | "back" = "both"
 ): Promise<void> => {
-  // 1. Use exact captured DOM card graphics if provided, else fall back to canvas
-  let dataUrl = capturedFrontUrl || "";
+  // [CHANGE 6: 2-PAGE 70x100mm FULL BLEED PDF]
+  let frontDataUrl = capturedFrontUrl || "";
   let backDataUrl = capturedBackUrl || "";
 
-  if (mode === "front" && !dataUrl) {
-    dataUrl = await generateIdCardCanvas(member, qrDataUrl, settings);
-  } else if (mode === "back" && !backDataUrl) {
-    backDataUrl = await generateIdCardBackCanvas(member);
-    dataUrl = backDataUrl;
-  } else if (mode === "both") {
-    if (!dataUrl || !backDataUrl) {
-      const [genFront, genBack] = await Promise.all([
-        !dataUrl ? generateIdCardCanvas(member, qrDataUrl, settings) : Promise.resolve(dataUrl),
-        !backDataUrl ? generateIdCardBackCanvas(member) : Promise.resolve(backDataUrl),
-      ]);
-      dataUrl = dataUrl || genFront;
-      backDataUrl = backDataUrl || genBack;
+  if (!frontDataUrl) {
+    try {
+      frontDataUrl = await renderCleanCardOffscreen("msd-pvc-card-front", "print");
+    } catch {
+      frontDataUrl = await generateIdCardCanvas(member, qrDataUrl, settings);
     }
   }
 
-  if (!dataUrl && !backDataUrl) {
-    throw new Error("Could not generate card graphic for PDF.");
+  if (!backDataUrl) {
+    try {
+      backDataUrl = await renderCleanCardOffscreen("msd-pvc-card-back", "print");
+    } catch {
+      backDataUrl = await generateIdCardBackCanvas(member);
+    }
+  }
+
+  if (!frontDataUrl || !backDataUrl) {
+    throw new Error("Could not render card graphics for PDF.");
   }
 
   const cardW = 70;
   const cardH = 100;
 
-  // Single side PDF: Sized EXACTLY 70 mm x 100 mm - 100% pure card, zero extra margins or space
-  if (mode === "front" || mode === "back") {
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: [cardW, cardH],
-    });
-    doc.addImage(mode === "front" ? dataUrl : backDataUrl, "PNG", 0, 0, cardW, cardH);
-    const suffix = mode === "front" ? "Front" : "Back";
-    doc.save(`MSD_ID_Card_${suffix}_${member.registrationId || "member"}.pdf`);
-    return;
-  }
-
-  // Both sides PDF: Clean dual-sided layout on standard A4 page (ONLY the cards, NO extra markings)
+  // Standard A4 PDF (210 x 297 mm) with Front and Back side-by-side like PNG
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -1091,7 +1121,7 @@ export const generateIdCardPdf = async (
   const pageWidth = 210;
   const pageHeight = 297;
 
-  // Standard 70 mm x 100 mm cards side-by-side, centered on the page
+  // Standard 70 mm x 100 mm cards placed side-by-side, centered on the A4 page
   const gap = 14;
   const totalW = cardW * 2 + gap; // 154 mm
   const startX = (pageWidth - totalW) / 2; // 28 mm
@@ -1099,21 +1129,82 @@ export const generateIdCardPdf = async (
   const backCardX = startX + cardW + gap;
   const cardY = (pageHeight - cardH) / 2; // centered vertically (98.5 mm)
 
-  // Draw Front Card directly
-  doc.addImage(dataUrl, "PNG", frontCardX, cardY, cardW, cardH);
+  // Draw Front Card on left
+  doc.addImage(frontDataUrl, "PNG", frontCardX, cardY, cardW, cardH, undefined, "FAST");
 
-  // Draw Back Card directly
-  if (backDataUrl) {
-    doc.addImage(backDataUrl, "PNG", backCardX, cardY, cardW, cardH);
-  }
+  // Draw Back Card on right
+  doc.addImage(backDataUrl, "PNG", backCardX, cardY, cardW, cardH, undefined, "FAST");
 
-  // Save clean PDF
-  doc.save(`MSD_ID_Card_${member.registrationId || "member"}.pdf`);
+  // File name: MSD-IND-2026-0001.pdf dynamically
+  const cleanRegId = (member.registrationId || "member").replace(/[^a-zA-Z0-9_-]/g, "_");
+  doc.save(`${cleanRegId}.pdf`);
 };
 
 /**
  * Helper to safely format gender to Male / Female / Other
  */
+/**
+ * Helper to format Date of Birth to standard DD/MM/YYYY format
+ */
+export const formatDobDDMMYYYY = (dobString?: string): string => {
+  if (!dobString) return "";
+  const str = String(dobString).trim();
+  if (!str) return "";
+  const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (ymdMatch) {
+    const [, y, m, d] = ymdMatch;
+    return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+  }
+  const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+  }
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, "0");
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const y = String(parsed.getFullYear());
+    return `${d}/${m}/${y}`;
+  }
+  return str;
+};
+
+export const calcMemberAge = (dobString?: string): number | undefined => {
+  if (!dobString) return undefined;
+  const str = String(dobString).trim();
+  if (!str) return undefined;
+  const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  let parsed: Date;
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    parsed = new Date(Number(y), Number(m) - 1, Number(d));
+  } else {
+    parsed = new Date(str);
+  }
+  if (isNaN(parsed.getTime())) return undefined;
+  const now = new Date();
+  let years = now.getFullYear() - parsed.getFullYear();
+  const m = now.getMonth() - parsed.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < parsed.getDate())) {
+    years--;
+  }
+  return years >= 0 && years <= 125 ? years : undefined;
+};
+
+/**
+ * Helper to format contact number to 10 digits alone (stripping +91 / country code prefix)
+ */
+export const format10DigitMobile = (mobile?: string): string => {
+  if (!mobile) return "—";
+  const digits = String(mobile).replace(/\D/g, "");
+  if (!digits) return String(mobile).trim() || "—";
+  if (digits.length >= 10) {
+    return digits.slice(-10);
+  }
+  return digits;
+};
+
 const getDisplayGender = (gender?: string): string => {
   if (!gender || typeof gender !== "string" || !gender.trim()) return "Male";
   const lower = gender.trim().toLowerCase();
@@ -1127,14 +1218,17 @@ const getDisplayGender = (gender?: string): string => {
  * Direct HTML5 Canvas generator for Back Side of ID Card (800x1200px)
  */
 export const generateIdCardBackCanvas = async (
-  member: DigitalIdCardProps["member"]
+  member: DigitalIdCardProps["member"],
+  hideSlotPill = true
 ): Promise<string> => {
   try {
     const canvas = document.createElement("canvas");
-    canvas.width = 800;
-    canvas.height = 1200;
+    // Standard 70 mm x 100 mm at 300 DPI = 827 x 1181 px
+    canvas.width = 827;
+    canvas.height = 1181;
     const ctx = canvas.getContext("2d");
     if (!ctx) return "";
+    ctx.scale(827 / 800, 1181 / 1200);
 
     // 1. Background Gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 800, 1200);
@@ -1149,15 +1243,17 @@ export const generateIdCardBackCanvas = async (
     ctx.lineWidth = 8;
     ctx.strokeRect(4, 4, 792, 1192);
 
-    // 2. Lanyard Slot
+    // 2. Lanyard Slot (punch area margin preserved, pill mockup hidden for print)
     ctx.fillStyle = "#faf5ea";
     ctx.fillRect(8, 8, 784, 50);
-    ctx.fillStyle = "#4a443c";
-    ctx.beginPath();
-    ctx.arc(330, 28, 10, Math.PI / 2, (Math.PI * 3) / 2);
-    ctx.arc(470, 28, 10, (Math.PI * 3) / 2, Math.PI / 2);
-    ctx.closePath();
-    ctx.fill();
+    if (!hideSlotPill) {
+      ctx.fillStyle = "#4a443c";
+      ctx.beginPath();
+      ctx.arc(330, 28, 10, Math.PI / 2, (Math.PI * 3) / 2);
+      ctx.arc(470, 28, 10, (Math.PI * 3) / 2, Math.PI / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // 3. Indian National Tricolor Ribbon
     const triGrad = ctx.createLinearGradient(8, 0, 792, 0);
@@ -1202,129 +1298,160 @@ export const generateIdCardBackCanvas = async (
     ctx.font = "12px Arial, sans-serif";
     ctx.fillText("National Socio-Cultural Cadre Registry · Estd. 1947", 130, 170);
 
-    // Badge: REVERSE SIDE
-    ctx.fillStyle = "#fff4e5";
-    ctx.fillRect(645, 110, 120, 30);
+    // Top right: REVERSE SIDE Pill (matches Screenshot 1)
+    const pillX = 625;
+    const pillY = 120;
+    const pillW = 140;
+    const pillH = 34;
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillW, pillH, 8);
+    ctx.fillStyle = "#fff8f0";
+    ctx.fill();
     ctx.strokeStyle = "#FF6200";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(645, 110, 120, 30);
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
     ctx.fillStyle = "#FF6200";
-    ctx.font = "bold 12px Courier, monospace";
-    ctx.fillText("CARD BACK", 665, 130);
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("REVERSE SIDE", pillX + pillW / 2, pillY + 22);
+    ctx.textAlign = "left";
+
+    // 4D. Back Sub-Header Banner (Official Cadre Record & Directives)
+    ctx.fillStyle = "#2c2824";
+    ctx.fillRect(35, 192, 730, 34);
+
+    ctx.fillStyle = "#FF9933";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("OFFICIAL CADRE RECORD & DIRECTIVES", 400, 214);
+    ctx.textAlign = "left";
 
     // 5. Section 1: Member Personal & Family Particulars (Card Box)
     ctx.fillStyle = "#faf6ee";
-    ctx.fillRect(35, 210, 730, 200);
+    ctx.fillRect(35, 238, 730, 168);
     ctx.strokeStyle = "#e6dbc8";
     ctx.lineWidth = 2;
-    ctx.strokeRect(35, 210, 730, 200);
+    ctx.strokeRect(35, 238, 730, 168);
 
     // Father's Name
-    ctx.fillStyle = "#8a8174";
+    ctx.fillStyle = "#554e44";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("FATHER'S / HUSBAND'S NAME", 60, 245);
+    ctx.fillText("FATHER'S / HUSBAND'S NAME", 60, 268);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 20px Georgia, serif";
-    ctx.fillText(member.fatherName || "—", 60, 275);
+    ctx.fillText(member.fatherName || "—", 60, 296);
 
     // DOB & Age
-    ctx.fillStyle = "#8a8174";
+    ctx.fillStyle = "#554e44";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("DATE OF BIRTH & AGE", 430, 245);
+    ctx.fillText("DATE OF BIRTH & AGE", 430, 268);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 19px Courier, monospace";
-    const dobStr = member.dob ? `${member.dob}${member.age ? ` (${member.age} Yrs)` : ""}` : "—";
-    ctx.fillText(dobStr, 430, 275);
+    const memberAge = member.age ?? calcMemberAge(member.dob);
+    const formattedDob = formatDobDDMMYYYY(member.dob);
+    const dobStr = formattedDob ? `${formattedDob}${memberAge ? ` (${memberAge} Yrs)` : ""}` : "—";
+    ctx.fillText(dobStr, 430, 296);
 
     // Divider line
     ctx.strokeStyle = "#e8dfcf";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(60, 310);
-    ctx.lineTo(735, 310);
+    ctx.moveTo(60, 320);
+    ctx.lineTo(735, 320);
     ctx.stroke();
 
     // Gender
-    ctx.fillStyle = "#8a8174";
+    ctx.fillStyle = "#554e44";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("GENDER", 60, 345);
+    ctx.fillText("GENDER", 60, 350);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 18px Arial, sans-serif";
-    ctx.fillText(getDisplayGender(member.gender), 60, 375);
+    ctx.fillText(getDisplayGender(member.gender), 60, 378);
 
-    // Emergency / Mobile
-    ctx.fillStyle = "#8a8174";
+    // Emergency Contact / WhatsApp
+    ctx.fillStyle = "#554e44";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("EMERGENCY / WHATSAPP", 430, 345);
+    ctx.fillText("EMERGENCY / WHATSAPP", 430, 350);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 18px Courier, monospace";
-    ctx.fillText(member.whatsapp || member.mobile || "—", 430, 375);
+    const emergencyCanvasText = member.emergencyNumber
+      ? `${format10DigitMobile(member.emergencyNumber)}${member.emergencyRelation ? ` (${member.emergencyRelation})` : ""}`
+      : format10DigitMobile(member.whatsapp || member.mobile);
+    ctx.fillText(emergencyCanvasText, 430, 378);
 
-    // 6. Section 2: Permanent Residential Address
+    // 6. Section 2: Permanent Residential Address Box
     ctx.fillStyle = "#faf6ee";
-    ctx.fillRect(35, 435, 730, 220);
+    ctx.fillRect(35, 418, 730, 185);
     ctx.strokeStyle = "#e6dbc8";
     ctx.lineWidth = 2;
-    ctx.strokeRect(35, 435, 730, 220);
+    ctx.strokeRect(35, 418, 730, 185);
 
+    // Orange MapPin Symbol & Title
     ctx.fillStyle = "#FF6200";
     ctx.font = "bold 14px Arial, sans-serif";
-    ctx.fillText("📍 PERMANENT RESIDENTIAL ADDRESS", 60, 470);
+    ctx.fillText("📍 PERMANENT RESIDENTIAL ADDRESS", 60, 448);
 
+    // Street Address
     ctx.fillStyle = "#1e1e1e";
-    ctx.font = "500 18px Arial, sans-serif";
-    const addr = member.address || "Permanent Registered Address on Record";
-    const words = addr.split(" ");
-    let line1 = "";
-    let line2 = "";
-    for (const w of words) {
-      if ((line1 + w).length < 48) line1 += w + " ";
-      else line2 += w + " ";
-    }
-    ctx.fillText(line1.trim(), 60, 505);
-    if (line2.trim()) {
-      ctx.fillText(line2.trim(), 60, 535);
-    }
+    ctx.font = "bold 19px Georgia, serif";
+    ctx.fillText(member.address || "—", 60, 484);
 
-    // Taluk, District, State, PIN
-    ctx.fillStyle = "#4a443c";
-    ctx.font = "bold 16px Arial, sans-serif";
-    const geoStr = [
-      member.taluk ? `Taluk: ${member.taluk}` : "",
-      `District: ${member.district}`,
-      `State: ${member.state}`,
-      member.pincode ? `PIN: ${member.pincode}` : "",
-    ]
-      .filter(Boolean)
-      .join("  |  ");
-    ctx.fillText(geoStr, 60, 580);
-
-    ctx.fillStyle = "#6b6255";
-    ctx.font = "14px Arial, sans-serif";
-    ctx.fillText(`Registered Email: ${member.email || "mahasevadalorganization@gmail.com"}`, 60, 620);
-
-    // 7. Section 3: Official Cadre Guidelines & Terms
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(35, 680, 730, 250);
-    ctx.strokeStyle = "#e6dbc8";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(35, 680, 730, 250);
-
+    // Taluk / Dist / State / PIN line
+    ctx.font = "bold 13px Arial, sans-serif";
+    let curX = 60;
+    ctx.fillStyle = "#554e44";
+    ctx.fillText("Taluk: ", curX, 520);
+    curX += ctx.measureText("Taluk: ").width;
     ctx.fillStyle = "#1e1e1e";
-    ctx.font = "bold 15px Arial, sans-serif";
-    ctx.fillText("🛡️ OFFICIAL CADRE GUIDELINES & DIRECTIVES", 60, 720);
+    ctx.fillText(`${member.taluk || "—"}   `, curX, 520);
+    curX += ctx.measureText(`${member.taluk || "—"}   `).width;
 
     ctx.fillStyle = "#554e44";
+    ctx.fillText("Dist: ", curX, 520);
+    curX += ctx.measureText("Dist: ").width;
+    ctx.fillStyle = "#1e1e1e";
+    ctx.fillText(`${member.district || "—"}   `, curX, 520);
+    curX += ctx.measureText(`${member.district || "—"}   `).width;
+
+    ctx.fillStyle = "#554e44";
+    ctx.fillText("State: ", curX, 520);
+    curX += ctx.measureText("State: ").width;
+    ctx.fillStyle = "#1e1e1e";
+    ctx.fillText(`${member.state || "—"}   `, curX, 520);
+    curX += ctx.measureText(`${member.state || "—"}   `).width;
+
+    ctx.fillStyle = "#FF6200";
+    ctx.fillText(`PIN: ${member.pincode || "—"}`, curX, 520);
+
+    // Email line
+    ctx.fillStyle = "#554e44";
+    ctx.font = "bold 13px Arial, sans-serif";
+    ctx.fillText("Email: ", 60, 560);
+    ctx.fillStyle = "#1e1e1e";
+    ctx.font = "14px Courier, monospace";
+    ctx.fillText(member.email || "—", 60 + ctx.measureText("Email: ").width, 560);
+
+    // 7. Section 3: Cadre Directives & Terms (3 Official Bullets)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(35, 615, 730, 315);
+    ctx.strokeStyle = "#e6dbc8";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(35, 615, 730, 315);
+
+    ctx.fillStyle = "#1e1e1e";
+    ctx.font = "bold 16px Arial, sans-serif";
+    ctx.fillText("🛡️ CADRE DIRECTIVES & TERMS", 60, 652);
+
+    ctx.fillStyle = "#4a443c";
     ctx.font = "14.5px Arial, sans-serif";
     const bullets = [
-      "• This Identity Card is non-transferable property of Maha Seva Dal (Estd. 1947).",
-      "• The accredited holder is pledged to constitutional unity, discipline & civic welfare.",
-      "• Authorized for social mobilization, disaster response, and developmental camps.",
-      "• Card validity is subject to active cadre compliance & continuous renewal.",
-      "• If found unattended, please deposit at the nearest post box or return to Central HQ.",
+      "• This card is non-transferable property of Maha Seva Dal (Estd. 1947).",
+      "• Authorized for civic welfare, social upliftment & relief operations.",
+      "• If found, please return to Central Secretariat or nearest post box.",
     ];
     bullets.forEach((b, idx) => {
-      ctx.fillText(b, 60, 760 + idx * 32);
+      ctx.fillText(b, 60, 706 + idx * 56);
     });
 
     // 8. Section 4: 1D Barcode & Validity Row
@@ -1358,23 +1485,29 @@ export const generateIdCardBackCanvas = async (
     ctx.font = "bold 13px Courier, monospace";
     ctx.fillText(regId, 130, 1042);
 
-    // Validity & Issuance Details on right
+    // Validity & Issuance Details on right - enclosed in matching box
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(430, 975, 310, 75);
+    ctx.strokeStyle = "#d6caba";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(430, 975, 310, 75);
+
     const rawDate = member.approvedAt || member.createdAt || new Date().toISOString();
     const issueDate = new Date(rawDate).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
-    ctx.fillStyle = "#777064";
+    ctx.fillStyle = "#554e44";
     ctx.font = "bold 13px Arial, sans-serif";
-    ctx.fillText("DATE OF ISSUE:", 430, 1005);
+    ctx.fillText("DATE OF ISSUE:", 450, 1008);
     ctx.fillStyle = "#1e1e1e";
     ctx.font = "bold 15px Courier, monospace";
-    ctx.fillText(issueDate, 560, 1005);
+    ctx.fillText(issueDate, 575, 1008);
 
     ctx.fillStyle = "#FF6200";
     ctx.font = "bold 12.5px Arial, sans-serif";
-    ctx.fillText("CENTRAL EXECUTIVE COMMITTEE", 430, 1045);
+    ctx.fillText("CENTRAL EXECUTIVE COMMITTEE", 450, 1035);
 
     // 9. Bottom Dark Security Band (Only Saffron Text)
     ctx.fillStyle = "#2c2824";
@@ -1400,12 +1533,13 @@ export const generateCombinedIdCardCanvas = async (
   qrDataUrl: string,
   settings?: CardSettings,
   padding = 48,
-  gap = 48
+  gap = 48,
+  hideSlotPill = true
 ): Promise<string> => {
   try {
     const [frontDataUrl, backDataUrl] = await Promise.all([
-      generateIdCardCanvas(member, qrDataUrl, settings),
-      generateIdCardBackCanvas(member),
+      generateIdCardCanvas(member, qrDataUrl, settings, hideSlotPill),
+      generateIdCardBackCanvas(member, hideSlotPill),
     ]);
 
     if (!frontDataUrl || !backDataUrl) {
@@ -1573,51 +1707,151 @@ export const setPng300Dpi = (dataUrl: string, dpi = 300): string => {
  * Capture an on-screen DOM card element exactly as displayed using html-to-image
  * Outputs a crisp 300+ DPI data URL (pixelRatio: 3) with official 300 DPI metadata
  */
-export const captureCardElement = async (elementId: string): Promise<string> => {
-  const el = document.getElementById(elementId);
-  if (!el) {
+/**
+ * [CHANGE 1: TIGHT CROP & OFF-SCREEN RENDER]
+ * Renders an exact 70 x 100 mm (aspect 7:10) clean off-screen clone of the card element.
+ * - Cropped exactly to the card edge with NO outer padding, NO white margins, and NO drop shadow.
+ * - Rendered at scale 3 (315x450px * 3 = 945x1350px, well above 827x1181px at 300 DPI).
+ * - PRINT mode: square corners (borderRadius: 0), fills edge-to-edge, solid #ffffff background, slot pill removed.
+ * - SHARE mode: rounded corners (16px), transparent background outside corners, slot pill removed for clean look.
+ */
+export const renderCleanCardOffscreen = async (
+  elementId: string,
+  mode: "print" | "share" = "share"
+): Promise<string> => {
+  const original = document.getElementById(elementId);
+  if (!original) {
     throw new Error(`Element #${elementId} not found in DOM`);
   }
 
-  // Pre-wait for any images inside the element to finish loading
-  const imgs = Array.from(el.querySelectorAll("img"));
-  await Promise.all(
-    imgs.map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if (img.complete && img.naturalWidth > 0) return resolve();
-          const onLoad = () => { cleanup(); resolve(); };
-          const onError = () => { cleanup(); resolve(); };
-          const timer = setTimeout(() => { cleanup(); resolve(); }, 1200);
-          const cleanup = () => {
-            clearTimeout(timer);
-            img.removeEventListener("load", onLoad);
-            img.removeEventListener("error", onError);
-          };
-          img.addEventListener("load", onLoad);
-          img.addEventListener("error", onError);
-        })
-    )
-  );
+  // Pre-wait for fonts to be ready
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch (e) {
+      console.warn("Fonts ready check failed:", e);
+    }
+  }
 
-  const rawDataUrl = await toPng(el, {
-    pixelRatio: 3, // 315x450px at 3x -> 945x1350px (crisp 300+ DPI print resolution)
-    cacheBust: false,
-    quality: 1.0,
-    backgroundColor: "#ffffff",
-  });
+  // Wait a tick for paint to settle
+  await new Promise((resolve) => setTimeout(resolve, 35));
 
-  return setPng300Dpi(rawDataUrl, 300);
+  // In all download formats, keep the exact same sleek rounded corners, border, and tight crop
+  original.classList.add("card-export-active", "card-export-share");
+
+  try {
+    // Primary: capture directly from live DOM using html-to-image (toPng)
+    // toPng uses native SVG <foreignObject> rasterization,
+    // which guarantees pixel-perfect typography, sharp letter kerning, accurate flex alignment,
+    // and crisp vector barcode lines at 3x resolution without squishing!
+    let dataUrl = "";
+    try {
+      dataUrl = await toPng(original, {
+        pixelRatio: 3, // 315 * 3 = 945px, 450 * 3 = 1350px (exceeds 827x1181px at 300 DPI)
+        quality: 1.0,
+        cacheBust: false,
+        style: {
+          transform: "none",
+          transition: "none",
+          margin: "0",
+        },
+      });
+    } catch (toPngErr) {
+      console.warn("Live DOM toPng error, falling back to off-screen capture:", toPngErr);
+    }
+
+    if (!dataUrl || dataUrl.length < 100) {
+      // Fallback: clone node and capture in an invisible in-document container
+      const clone = original.cloneNode(true) as HTMLElement;
+      clone.id = `${elementId}-export-clone`;
+      clone.style.width = "315px";
+      clone.style.height = "450px";
+      clone.style.minWidth = "315px";
+      clone.style.maxWidth = "315px";
+      clone.style.minHeight = "450px";
+      clone.style.maxHeight = "450px";
+      clone.style.margin = "0";
+      clone.style.boxShadow = "none";
+      clone.style.filter = "none";
+      clone.style.transform = "none";
+      clone.style.borderRadius = "16px";
+
+      const pill = clone.querySelector('[data-slot-pill="true"], [data-slot="lanyard"] > div, .card-lanyard-slot > div');
+      if (pill) {
+        (pill as HTMLElement).style.visibility = "hidden";
+        (pill as HTMLElement).style.opacity = "0";
+      }
+
+      const container = document.createElement("div");
+      container.style.position = "fixed";
+      container.style.left = "0";
+      container.style.top = "0";
+      container.style.opacity = "0";
+      container.style.pointerEvents = "none";
+      container.style.zIndex = "-9999";
+      container.style.width = "315px";
+      container.style.height = "450px";
+      container.style.backgroundColor = "transparent";
+      container.appendChild(clone);
+      document.body.appendChild(container);
+
+      try {
+        dataUrl = await toPng(clone, {
+          pixelRatio: 3,
+          quality: 1.0,
+          cacheBust: false,
+        });
+      } finally {
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+      }
+    }
+
+    if (!dataUrl) {
+      throw new Error(`Failed to render clean card #${elementId}`);
+    }
+
+    // Ensure exact 827 x 1181 px at 300 DPI (70 mm x 100 mm commercial PVC standard)
+    try {
+      const img = await safeLoadImage(dataUrl);
+      const canvas = document.createElement("canvas");
+      canvas.width = 827;
+      canvas.height = 1181;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, 827, 1181);
+        dataUrl = canvas.toDataURL("image/png");
+      }
+    } catch (e) {
+      console.warn("Could not scale to exact 827x1181:", e);
+    }
+
+    // Embed 300 DPI metadata
+    return setPng300Dpi(dataUrl, 300);
+  } finally {
+    original.classList.remove("card-export-active", "card-export-print", "card-export-share");
+  }
 };
 
 /**
- * Add clean white padding space around a single card data URL for PNG export
+ * Backward-compatible wrapper for captureCardElement
+ */
+export const captureCardElement = async (
+  elementId: string,
+  mode: "print" | "share" = "print"
+): Promise<string> => {
+  return renderCleanCardOffscreen(elementId, mode);
+};
+
+/**
+ * Backward-compatible helper for addPaddingToCardDataUrl
  */
 export const addPaddingToCardDataUrl = async (
   cardDataUrl: string,
-  padding = 48
+  padding = 0
 ): Promise<string> => {
-  if (!cardDataUrl) return "";
+  if (!cardDataUrl || padding <= 0) return cardDataUrl;
   const img = await safeLoadImage(cardDataUrl);
   if (!img) return cardDataUrl;
 
@@ -1638,14 +1872,15 @@ export const addPaddingToCardDataUrl = async (
 };
 
 /**
- * Combine Front and Back captured card images side-by-side into a single high-res PNG
- * with clean presentation and space around the cards (zero cutting lines or extra text)
+ * [CHANGE 5: BOTH SIDES COMBINED PNG]
+ * Combines Front and Back captured cards side-by-side with a clean gap for sharing.
  */
 export const combineCapturedCards = async (
   frontDataUrl: string,
   backDataUrl: string,
-  padding = 48,
-  gap = 48
+  padding = 32,
+  gap = 24,
+  mode: "print" | "share" = "share"
 ): Promise<string> => {
   const [frontImg, backImg] = await Promise.all([
     safeLoadImage(frontDataUrl),
@@ -1653,7 +1888,7 @@ export const combineCapturedCards = async (
   ]);
 
   if (!frontImg || !backImg) {
-    throw new Error("Could not load captured card images");
+    throw new Error("Could not load captured card images for combination");
   }
 
   const canvas = document.createElement("canvas");
@@ -1665,15 +1900,55 @@ export const combineCapturedCards = async (
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
-  // Clean white background with space around the ID cards - absolutely NO cutting signs, NO scissors, NO extra text
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
+  if (mode === "print") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+  } else {
+    // Transparent background for share mode
+    ctx.clearRect(0, 0, width, height);
+  }
 
-  // Draw Front Card on the left and Back Card on the right with space around
   ctx.drawImage(frontImg, padding, padding);
   ctx.drawImage(backImg, padding + frontImg.width + gap, padding);
 
   return setPng300Dpi(canvas.toDataURL("image/png"), 300);
+};
+
+/**
+ * Helper to trigger browser download via Blob URL
+ */
+export const triggerDownload = (dataUrl: string, filename: string): void => {
+  let downloadUrl = dataUrl;
+  let blobUrl = "";
+  if (dataUrl.startsWith("data:")) {
+    try {
+      const parts = dataUrl.split(",");
+      const mime = parts[0].match(/:(.*?);/)?.[1] || "image/png";
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      blobUrl = URL.createObjectURL(blob);
+      downloadUrl = blobUrl;
+    } catch (e) {
+      console.warn("Blob conversion fallback:", e);
+      downloadUrl = dataUrl;
+    }
+  }
+
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = downloadUrl;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  if (blobUrl) {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+  }
 };
 
 export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
@@ -1687,10 +1962,12 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
   stacked = false,
   defaultView = "both",
   showViewToggle = false,
+  compact = false,
 }) => {
   const [activeView, setActiveView] = useState<"both" | "front" | "back">(defaultView);
-  const [downloading, setDownloading] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingMode, setDownloadingMode] = useState<
+    "pdf" | "both" | "front_print" | "back_print" | "front_share" | "back_share" | null
+  >(null);
 
   // Local card settings state, initialized from props or localStorage
   const [cardSettings, setCardSettings] = useState<CardSettings>({
@@ -1717,7 +1994,8 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
       .catch(() => {});
   }, [customSealUrl, customSignatureUrl, signatoryName, signatoryTitle]);
 
-  const isApproved = (member.status || "").toUpperCase() === "APPROVED";
+  const isPending = (member.status || "").toUpperCase() === "PENDING";
+  const isApproved = !isPending;
 
   const rawDate = member.approvedAt || member.createdAt || new Date().toISOString();
   const issueDate = new Date(rawDate).toLocaleDateString("en-IN", {
@@ -1734,119 +2012,116 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
     return () => setActiveView(prev);
   };
 
-  const handleDownloadImage = async (mode: "both" | "front" | "back" = "both") => {
-    setDownloading(true);
+  /**
+   * [CHANGE 7: ENHANCED PNG & PDF DOWNLOAD HANDLERS]
+   * File names:
+   * - Front Side (PNG): ${regId}_Front.png
+   * - Back Side (PNG): ${regId}_Back.png
+   * - Both Sides (PNG): ${regId}_Both.png
+   * - PDF: ${regId}.pdf
+   * - Optional Share: ${regId}_Front_Share.png, ${regId}_Back_Share.png
+   */
+  const handleDownloadImage = async (
+    target: "both" | "front" | "back",
+    exportMode: "print" | "share" = "print"
+  ) => {
+    const modeKey =
+      target === "both"
+        ? "both"
+        : target === "front"
+        ? exportMode === "print" ? "front_print" : "front_share"
+        : exportMode === "print" ? "back_print" : "back_share";
+
+    setDownloadingMode(modeKey);
     let cleanup = () => {};
     try {
-      if (mode === "both" && activeView !== "both") {
-        cleanup = await ensureCardsRendered();
-      } else if (mode === "front" && activeView === "back") {
-        cleanup = await ensureCardsRendered();
-      } else if (mode === "back" && activeView === "front") {
+      if (activeView !== "both") {
         cleanup = await ensureCardsRendered();
       }
 
+      const cleanRegId = (member.registrationId || "member").replace(/[^a-zA-Z0-9_-]/g, "_");
       let dataUrl = "";
-      let filenameSuffix = "BothSides";
+      let filename = "";
 
-      if (mode === "front") {
+      if (target === "front") {
         try {
-          dataUrl = await captureCardElement("msd-pvc-card-front");
+          dataUrl = await renderCleanCardOffscreen("msd-pvc-card-front", "share");
         } catch (e) {
           console.warn("DOM capture fallback:", e);
           dataUrl = await generateIdCardCanvas(member, qrDataUrl, cardSettings);
         }
-        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
-        filenameSuffix = "Front";
-      } else if (mode === "back") {
+        filename = exportMode === "share" && modeKey === "front_share"
+          ? `${cleanRegId}_Front_Share.png`
+          : `${cleanRegId}_Front.png`;
+      } else if (target === "back") {
         try {
-          dataUrl = await captureCardElement("msd-pvc-card-back");
+          dataUrl = await renderCleanCardOffscreen("msd-pvc-card-back", "share");
         } catch (e) {
           console.warn("DOM capture fallback:", e);
           dataUrl = await generateIdCardBackCanvas(member);
         }
-        dataUrl = await addPaddingToCardDataUrl(dataUrl, 48);
-        filenameSuffix = "Back";
+        filename = exportMode === "share" && modeKey === "back_share"
+          ? `${cleanRegId}_Back_Share.png`
+          : `${cleanRegId}_Back.png`;
       } else {
+        // Both sides side-by-side (share mode)
+        let frontUrl = "";
+        let backUrl = "";
         try {
-          const frontUrl = await captureCardElement("msd-pvc-card-front");
-          const backUrl = await captureCardElement("msd-pvc-card-back");
-          if (frontUrl && backUrl) {
-            dataUrl = await combineCapturedCards(frontUrl, backUrl, 48, 48);
-          } else {
-            throw new Error("Incomplete DOM capture");
-          }
+          [frontUrl, backUrl] = await Promise.all([
+            renderCleanCardOffscreen("msd-pvc-card-front", "share"),
+            renderCleanCardOffscreen("msd-pvc-card-back", "share"),
+          ]);
         } catch (e) {
-          console.warn("DOM capture fallback:", e);
-          dataUrl = await generateCombinedIdCardCanvas(member, qrDataUrl, cardSettings, 48, 48);
+          console.warn("Dual DOM capture fell back to canvas:", e);
+          frontUrl = await generateIdCardCanvas(member, qrDataUrl, cardSettings);
+          backUrl = await generateIdCardBackCanvas(member);
         }
-        filenameSuffix = "BothSides";
+
+        dataUrl = await combineCapturedCards(frontUrl, backUrl, 32, 24, "share");
+        filename = `${cleanRegId}_Both.png`;
       }
 
       if (!dataUrl) {
         throw new Error("Could not render card image.");
       }
 
-      // Ensure strict 300 DPI print metadata is embedded in final PNG
-      dataUrl = setPng300Dpi(dataUrl, 300);
-
-      const link = document.createElement("a");
-      link.download = `MSD_ID_Card_${filenameSuffix}_${member.registrationId || "member"}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      triggerDownload(dataUrl, filename);
     } catch (err: any) {
       console.error("Download error:", err);
       alert("Download error: " + (err.message || "Failed to download card"));
     } finally {
       cleanup();
-      setDownloading(false);
+      setDownloadingMode(null);
     }
   };
 
-  const handleDownloadPdf = async (mode: "both" | "front" | "back" = "both") => {
-    setDownloadingPdf(true);
+  const handleDownloadPdf = async () => {
+    setDownloadingMode("pdf");
     let cleanup = () => {};
     try {
-      if (mode === "both" && activeView !== "both") {
-        cleanup = await ensureCardsRendered();
-      } else if (mode === "front" && activeView === "back") {
-        cleanup = await ensureCardsRendered();
-      } else if (mode === "back" && activeView === "front") {
+      if (activeView !== "both") {
         cleanup = await ensureCardsRendered();
       }
 
       let frontUrl = "";
       let backUrl = "";
-      if (mode === "front") {
-        try {
-          frontUrl = await captureCardElement("msd-pvc-card-front");
-        } catch (e) {
-          console.warn("DOM capture for front PDF fell back:", e);
-        }
-      } else if (mode === "back") {
-        try {
-          backUrl = await captureCardElement("msd-pvc-card-back");
-        } catch (e) {
-          console.warn("DOM capture for back PDF fell back:", e);
-        }
-      } else {
-        try {
-          frontUrl = await captureCardElement("msd-pvc-card-front");
-          backUrl = await captureCardElement("msd-pvc-card-back");
-        } catch (e) {
-          console.warn("DOM capture for dual PDF fell back:", e);
-        }
+      try {
+        [frontUrl, backUrl] = await Promise.all([
+          renderCleanCardOffscreen("msd-pvc-card-front", "share"),
+          renderCleanCardOffscreen("msd-pvc-card-back", "share"),
+        ]);
+      } catch (e) {
+        console.warn("PDF capture fallback:", e);
       }
 
-      await generateIdCardPdf(member, qrDataUrl, cardSettings, frontUrl, backUrl, mode);
+      await generateIdCardPdf(member, qrDataUrl, cardSettings, frontUrl, backUrl);
     } catch (err: any) {
       console.error("PDF download error:", err);
       alert("PDF download failed: " + (err.message || "Unknown error"));
     } finally {
       cleanup();
-      setDownloadingPdf(false);
+      setDownloadingMode(null);
     }
   };
 
@@ -1863,8 +2138,8 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
         {(activeView === "both" || activeView === "front") && (
           <div className="flex flex-col items-center flex-1 w-full max-w-[315px]">
             {/* Front Header Badge */}
-            <div className="flex items-center justify-center gap-1.5 w-full max-w-[315px] px-3 py-1 mb-2 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
-              <ShieldCheck size={13} />
+            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 mb-3 bg-[#faf6ee] border border-[#e5dac8] rounded-full text-[11px] font-bold tracking-wider text-[#ea580c] shadow-2xs">
+              <ShieldCheck size={13} className="text-[#ea580c]" />
               <span>FRONT SIDE</span>
             </div>
 
@@ -1881,11 +2156,6 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
               {/* Subtle PVC Gloss Finish */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/20 rounded-2xl z-30" />
 
-              {/* Lanyard Punch Slot Simulation */}
-              <div className="pt-1.5 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
-                <div className="w-11 h-2 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
-              </div>
-
               {/* Indian National Tricolor Ribbon */}
               <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
 
@@ -1897,7 +2167,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                     alt="MSD Logo"
                     crossOrigin="anonymous"
                     onError={(e) => {
-                      e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
+                      e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1793441798/msd/brand/logo.png";
                     }}
                     className="w-8 h-8 rounded-full object-contain shadow-xs flex-shrink-0"
                   />
@@ -1906,7 +2176,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       Maha Seva Dal
                     </div>
                     <div className="text-[7.5px] font-sans font-bold text-[#FF6200] tracking-widest uppercase mt-0.5">
-                      Estd. 1947 · Unity of People's
+                      Estd. 1947 · Unity of People
                     </div>
                     <div className="text-[6.5px] text-muted-editorial font-medium">
                       National Socio-Cultural Cadre Registry
@@ -1941,19 +2211,24 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 <div className="flex items-start gap-2.5">
                   {/* Photo Box */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-[78px] h-[94px] rounded-lg overflow-hidden border-2 border-[#FF6200] bg-surface-soft shadow-xs flex items-center justify-center">
+                    <div className="w-[78px] h-[94px] rounded-lg overflow-hidden border-2 border-[#FF6200] ring-2 ring-white/90 ring-inset bg-surface-soft shadow-xs flex items-center justify-center">
                       {member.photoUrl ? (
                         <img
                           src={member.photoUrl}
                           alt={member.fullName}
                           crossOrigin="anonymous"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "/founder-saragabani-gopu-portrait.jpg";
+                          }}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="flex flex-col items-center justify-center text-muted-editorial">
-                          <User size={30} className="text-[#FF6200]" />
-                          <span className="text-[7px] mt-0.5 font-mono uppercase">Member</span>
-                        </div>
+                        <img
+                          src="/founder-saragabani-gopu-portrait.jpg"
+                          alt="Cadre Member"
+                          className="w-full h-full object-cover"
+                        />
                       )}
                     </div>
                   </div>
@@ -1961,7 +2236,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                   {/* Identity Details */}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div>
-                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-[#554e44] uppercase font-bold tracking-wider block">
                         Cadre Full Name
                       </span>
                       <div className="font-serif font-black text-xs text-ink leading-tight truncate">
@@ -1970,19 +2245,19 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                     </div>
 
                     <div>
-                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-[#554e44] uppercase font-bold tracking-wider block">
                         Registration ID
                       </span>
-                      <div className="font-mono text-[10px] font-bold text-[#FF6200] bg-surface-soft px-1.5 py-0.5 rounded border border-[#e5dac8] inline-block shadow-2xs">
+                      <div className="font-mono text-[10.5px] font-bold tracking-wider text-[#D65000] bg-surface-soft px-2 py-0.5 rounded border border-[#e5dac8] inline-block shadow-2xs">
                         {member.registrationId}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-[7px] text-muted-editorial uppercase font-bold tracking-wider block">
+                      <span className="text-[7px] text-[#554e44] uppercase font-bold tracking-wider block">
                         Assigned Wing
                       </span>
-                      <div className="text-[8.5px] font-bold text-ink bg-[#FF6200]/10 text-[#FF6200] px-1.5 py-0.5 rounded-md border border-[#FF6200]/25 inline-block truncate max-w-full">
+                      <div className="text-[8.5px] font-bold bg-[#fff7ed] text-ink px-1.5 py-0.5 rounded-md border border-[#fed7aa] inline-block truncate max-w-full shadow-2xs">
                         {member.wing}
                       </div>
                     </div>
@@ -1990,32 +2265,58 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 </div>
 
                 {/* Information Grid */}
-                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] grid grid-cols-2 gap-1.5 text-[8.5px]">
-                  <div>
-                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
-                      State Unit
-                    </span>
-                    <span className="font-bold text-ink truncate block">{member.state}</span>
+                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] space-y-1 text-[8.5px]">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        State Unit
+                      </span>
+                      <span className="font-bold text-ink truncate block">{member.state}</span>
+                    </div>
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        District Unit
+                      </span>
+                      <span className="font-bold text-ink truncate block">{member.district}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
-                      District Unit
-                    </span>
-                    <span className="font-bold text-ink truncate block">{member.district}</span>
+
+                  <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#ede3d3]">
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        Assembly Constituency
+                      </span>
+                      <span className="font-bold text-ink truncate block">{member.assembly || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        Zone / Region
+                      </span>
+                      <span className="font-bold text-ink truncate block">{member.zone || "—"}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
-                      Contact Mobile
-                    </span>
-                    <span className="font-mono font-semibold text-ink block">{member.mobile || "—"}</span>
-                  </div>
-                  <div>
-                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
-                      Blood Group
-                    </span>
-                    <span className="font-bold text-rose-700 bg-rose-50 px-1 py-0.2 rounded border border-rose-200 inline-block">
-                      {member.bloodGroup || "O+"}
-                    </span>
+
+                  <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#ede3d3]">
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        Contact Mobile
+                      </span>
+                      <span className="font-mono font-semibold text-ink block">{format10DigitMobile(member.mobile)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        Blood Group
+                      </span>
+                      {getValidBloodGroup(member.bloodGroup) ? (
+                        <span className="font-bold text-rose-700 bg-rose-50 px-1 py-0.2 rounded border border-rose-200 inline-block min-w-[12px] text-center">
+                          {getValidBloodGroup(member.bloodGroup)}
+                        </span>
+                      ) : (
+                        <span className="font-mono font-semibold text-ink block">
+                          —
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2027,10 +2328,10 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       {qrDataUrl ? (
                         <img src={qrDataUrl} alt="Verify QR" className="w-full h-full object-contain" />
                       ) : (
-                        <div className="text-[7px] text-center text-muted-editorial font-mono">QR</div>
+                        <div className="text-[7px] text-center text-[#554e44] font-mono">QR</div>
                       )}
                     </div>
-                    <div className="text-[7px] leading-tight text-muted-editorial">
+                    <div className="text-[7px] leading-tight text-[#554e44]">
                       <div className="font-bold text-[#FF6200]">SCAN TO VERIFY</div>
                       <div>Official Cadre</div>
                       <div className="font-mono text-[6px]">mahasevadal.com</div>
@@ -2061,16 +2362,15 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
 
                         {/* Flowing Authorized Signature */}
                         <div className="absolute right-1 bottom-[-2px] z-10 pointer-events-none">
-                          {cardSettings.customSignatureUrl ? (
-                            <img
-                              src={cardSettings.customSignatureUrl}
-                              alt="Authorized Signature"
-                              crossOrigin="anonymous"
-                              className="h-7 max-w-[90px] object-contain drop-shadow-xs"
-                            />
-                          ) : (
-                            <OfficialSignatureSvg className="h-7 w-20 text-blue-900" />
-                          )}
+                          <img
+                            src={cardSettings.customSignatureUrl || "/signature.png"}
+                            alt="Authorized Signature"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                              e.currentTarget.src = "/signature.png";
+                            }}
+                            className="h-7 max-w-[90px] object-contain drop-shadow-xs"
+                          />
                         </div>
                       </div>
 
@@ -2079,7 +2379,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                         <span className="text-[6.5px] font-bold text-ink uppercase tracking-wider block leading-tight truncate">
                           {cardSettings.signatoryName || "Authorized Signatory"}
                         </span>
-                        <span className="text-[5.5px] text-muted-editorial block leading-tight truncate">
+                        <span className="text-[5.5px] text-[#554e44] block leading-tight truncate">
                           {cardSettings.signatoryTitle || "Central Executive Committee"}
                         </span>
                       </div>
@@ -2108,7 +2408,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
               {/* Bottom Security Band */}
               <div className="py-1 px-2 bg-[#3d3832] flex items-center justify-center text-center text-[7px] font-mono">
                 <span className="text-[#FF9933] font-bold tracking-widest uppercase">
-                  UNITY OF PEOPLE'S
+                  UNITY OF PEOPLE
                 </span>
               </div>
             </div>
@@ -2119,8 +2419,8 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
         {(activeView === "both" || activeView === "back") && (
           <div className="flex flex-col items-center flex-1 w-full max-w-[315px]">
             {/* Back Header Badge */}
-            <div className="flex items-center justify-center gap-1.5 w-full max-w-[315px] px-3 py-1 mb-2 bg-[#FF6200]/10 border border-[#FF6200]/25 rounded-xl text-xs font-bold text-[#FF6200] shadow-2xs">
-              <FileText size={13} />
+            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 mb-3 bg-[#faf6ee] border border-[#e5dac8] rounded-full text-[11px] font-bold tracking-wider text-[#ea580c] shadow-2xs">
+              <FileText size={13} className="text-[#ea580c]" />
               <span>BACK SIDE</span>
             </div>
 
@@ -2137,11 +2437,6 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
               {/* Subtle PVC Gloss Finish */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/20 rounded-2xl z-30" />
 
-              {/* Lanyard Punch Slot Simulation */}
-              <div className="pt-1.5 pb-1 flex justify-center items-center bg-[#faf6ee] border-b border-[#e9dfce]">
-                <div className="w-11 h-2 rounded-full bg-[#3d3832]/20 border border-[#3d3832]/30 shadow-inner" />
-              </div>
-
               {/* Indian National Tricolor Ribbon */}
               <div className="h-1.5 w-full bg-gradient-to-r from-[#FF6200] via-[#FFFFFF] to-[#138808] border-b border-[#e5d8c3]" />
 
@@ -2154,21 +2449,24 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       alt="MSD Logo"
                       crossOrigin="anonymous"
                       onError={(e) => {
-                        e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1792742541/msd/brand/logo.png";
+                        e.currentTarget.src = "https://res.cloudinary.com/wq9znxvs/image/upload/v1793441798/msd/brand/logo.png";
                       }}
                       className="w-7 h-7 rounded-full object-contain shadow-xs flex-shrink-0"
                     />
                     <div>
-                      <div className="font-serif font-black text-xs tracking-tight text-ink uppercase leading-none">
+                      <div className="font-serif font-black text-sm tracking-tight text-ink uppercase leading-none">
                         Maha Seva Dal
                       </div>
                       <div className="text-[7.5px] font-sans font-bold text-[#FF6200] tracking-wider uppercase mt-0.5">
                         Cadre Particulars & Verification
                       </div>
+                      <div className="text-[6.5px] text-[#554e44] font-medium">
+                        National Socio-Cultural Cadre Registry · Estd. 1947
+                      </div>
                     </div>
                   </div>
-                  <div className="px-1.5 py-0.5 rounded bg-[#FF6200]/10 border border-[#FF6200]/30 text-[7px] font-mono font-bold text-[#FF6200] uppercase tracking-wider">
-                    Reverse Side
+                  <div className="px-2 py-0.5 rounded border border-[#FF6200]/40 bg-[#FF6200]/5 text-[#FF6200] text-[6.5px] font-bold font-mono tracking-wider uppercase flex-shrink-0">
+                    REVERSE SIDE
                   </div>
                 </div>
 
@@ -2185,7 +2483,7 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] space-y-1 text-[8.5px]">
                   <div className="grid grid-cols-2 gap-1.5">
                     <div>
-                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
                         Father's / Husband's Name
                       </span>
                       <span className="font-bold text-ink truncate block">
@@ -2193,18 +2491,23 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
                         Date of Birth & Age
                       </span>
                       <span className="font-bold text-ink block font-mono">
-                        {member.dob ? `${member.dob}${member.age ? ` (${member.age} Yrs)` : ""}` : "—"}
+                        {(() => {
+                          const formattedDob = formatDobDDMMYYYY(member.dob);
+                          if (!formattedDob) return "—";
+                          const memberAge = member.age ?? calcMemberAge(member.dob);
+                          return memberAge ? `${formattedDob} (${memberAge} Yrs)` : formattedDob;
+                        })()}
                       </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#ede3d3]">
                     <div>
-                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
                         Gender
                       </span>
                       <span className="font-semibold text-ink block">
@@ -2212,49 +2515,64 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[6.5px] text-muted-editorial uppercase font-bold block">
-                        Emergency / WhatsApp
+                      <span className="text-[6.5px] text-[#554e44] uppercase font-bold block">
+                        <span className="sr-only">Emergency Contact</span>
+                        <span aria-hidden="true">Emergency / WhatsApp</span>
                       </span>
-                      <span className="font-mono font-semibold text-ink block">
-                        {member.whatsapp || member.mobile || "—"}
+                      <span
+                        className="font-mono font-semibold text-ink block text-[8px] leading-tight truncate"
+                        title={
+                          member.emergencyNumber
+                            ? `${format10DigitMobile(member.emergencyNumber)}${member.emergencyRelation ? ` (${member.emergencyRelation})` : ""}`
+                            : format10DigitMobile(member.whatsapp || member.mobile)
+                        }
+                      >
+                        {member.emergencyNumber ? (
+                          <>
+                            {format10DigitMobile(member.emergencyNumber)}
+                            {member.emergencyRelation && (
+                              <span className="font-sans font-medium text-[7px] text-[#554e44] ml-1">
+                                ({member.emergencyRelation})
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          format10DigitMobile(member.whatsapp || member.mobile)
+                        )}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Permanent Residential Address Box */}
-                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8]">
-                  <div className="flex items-center gap-1 mb-0.5 text-[#FF6200]">
-                    <MapPin size={10} className="flex-shrink-0" />
-                    <span className="text-[6.5px] text-muted-editorial uppercase font-bold tracking-wider">
-                      Permanent Residential Address
-                    </span>
+                <div className="bg-[#faf6ee] rounded-lg p-2 border border-[#e6dbc8] space-y-1 text-[8px]">
+                  <div className="flex items-center gap-1 font-bold text-[#FF6200] text-[7.5px] uppercase tracking-wider">
+                    <MapPin size={10} className="text-[#FF6200] flex-shrink-0" />
+                    <span>Permanent Residential Address</span>
                   </div>
-                  <p className="text-[8px] text-ink font-medium leading-snug line-clamp-2">
-                    {member.address || "Permanent Registered Address on Record"}
-                  </p>
-                  <div className="text-[7px] text-muted-editorial font-semibold mt-1 flex flex-wrap gap-x-1.5 pt-0.5 border-t border-[#ede3d3]">
-                    {member.taluk && <span>Taluk: {member.taluk}</span>}
-                    <span>Dist: {member.district}</span>
-                    <span>State: {member.state}</span>
-                    {member.pincode && (
-                      <span className="font-mono text-[#FF6200] font-bold">PIN: {member.pincode}</span>
-                    )}
+                  <div className="font-semibold text-ink truncate leading-tight text-[8px]">
+                    {member.address || "—"}
+                  </div>
+                  <div className="text-[7px] text-[#554e44] truncate">
+                    Taluk: <span className="font-medium text-ink">{member.taluk || "—"}</span> &nbsp;Dist:{" "}
+                    <span className="font-medium text-ink">{member.district || "—"}</span> &nbsp;State:{" "}
+                    <span className="font-medium text-ink">{member.state || "—"}</span> &nbsp;PIN:{" "}
+                    <span className="font-mono font-bold text-[#FF6200]">{member.pincode || "—"}</span>
                   </div>
                   {member.email && (
-                    <div className="text-[6.5px] text-muted-editorial mt-0.5 truncate">
+                    <div className="text-[7px] text-[#554e44] truncate">
                       Email: <span className="font-mono text-ink">{member.email}</span>
                     </div>
                   )}
                 </div>
 
                 {/* 3. Official Terms & Directives */}
-                <div className="p-1.5 bg-white/70 rounded-md border border-[#e8dfcf] space-y-0.5 text-[6.5px] text-muted-editorial leading-tight">
-                  <div className="font-bold text-ink uppercase text-[6.5px] flex items-center gap-1">
+                <div className="p-2 bg-white/95 rounded-lg border border-[#e8dfcf] space-y-1 text-[7px] text-[#4a443c] leading-relaxed">
+                  <div className="font-bold text-ink uppercase text-[7.5px] flex items-center gap-1">
                     <ShieldCheck size={10} className="text-emerald-600 flex-shrink-0" />
                     <span>Cadre Directives & Terms</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-[6px]">
+                  <ul className="list-disc list-outside pl-3 space-y-0.5 text-[6.5px] leading-tight">
                     <li>This card is non-transferable property of Maha Seva Dal (Estd. 1947).</li>
                     <li>Authorized for civic welfare, social upliftment & relief operations.</li>
                     <li>If found, please return to Central Secretariat or nearest post box.</li>
@@ -2262,22 +2580,24 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
                 </div>
 
                 {/* 4. 1D Barcode & Validity Row */}
-                <div className="flex items-center justify-between pt-1 border-t border-[#e8dfcf] text-[7.5px]">
-                  <div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-[#e8dfcf] text-[7.5px]">
+                  <div className="flex flex-col justify-center">
                     <div className="bg-white px-1.5 py-0.5 rounded border border-[#e5dac8] shadow-2xs inline-block">
                       <BarcodeSvg code={member.registrationId} className="h-4.5 w-24" />
                     </div>
-                    <div className="font-mono text-[6.5px] text-muted-editorial font-bold mt-0.5">
+                    <div className="font-mono text-[6.5px] text-[#554e44] font-bold mt-0.5">
                       REG: {member.registrationId}
                     </div>
                   </div>
 
-                  <div className="text-right space-y-0.5">
-                    <div className="text-[6.5px] text-muted-editorial">
-                      ISSUED: <span className="font-mono font-bold text-ink">{issueDate}</span>
-                    </div>
-                    <div className="text-[6px] font-bold text-[#FF6200] uppercase tracking-tight">
-                      Central Exec. Committee
+                  <div className="text-right flex flex-col justify-center">
+                    <div className="bg-white px-2 py-1 rounded border border-[#e5dac8] shadow-2xs inline-block space-y-0.5">
+                      <div className="text-[6.5px] text-[#554e44] font-medium">
+                        ISSUED: <span className="font-mono font-bold text-ink">{issueDate}</span>
+                      </div>
+                      <div className="text-[6px] font-bold text-[#FF6200] uppercase tracking-tight">
+                        Central Exec. Committee
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2300,51 +2620,97 @@ export const DigitalIdCard: React.FC<DigitalIdCardProps> = ({
           {/* Card Dimensions Badge */}
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-editorial bg-[#faf7ee] px-3 sm:px-4 py-2 rounded-xl border border-[#e5dac8] shadow-2xs text-center">
             <span className="font-bold text-[#FF6200]">Card Dimensions:</span>
-            <span className="font-mono font-bold text-ink">70 mm × 100 mm (2.63" × 3.88")</span>
+            <span className="font-mono font-bold text-ink">70 mm × 100 mm (2.76" × 3.94")</span>
             <span className="text-muted-editorial/40 hidden sm:inline">•</span>
-            <span className="text-[11px] block sm:inline">Standard PVC ID Holder & Lamination Pouch Size • 300 DPI Print Standard</span>
+            <span className="text-[11px] block sm:inline">827 × 1181 px • 300 DPI Commercial Print Standard</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* 1. Download PDF (Both Sides) */}
-            <button
-              onClick={() => handleDownloadPdf("both")}
-              disabled={downloadingPdf || downloading}
-              className="bg-[#1e3a8a] hover:bg-[#172554] text-white text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
-              title="Download official clean PDF containing Front & Back ID cards side-by-side (zero extra markings)"
-            >
-              {downloadingPdf ? (
-                <>
-                  <span className="animate-spin text-sm">⏳</span>
-                  <span>Generating PDF...</span>
-                </>
-              ) : (
-                <>
-                  <FileText size={16} />
-                  <span>Download PDF (Both Sides)</span>
-                </>
-              )}
-            </button>
+          <div className="flex flex-col gap-3 w-full">
+            {/* Row 1: Dual-Sided Options (PDF 2-Pages & Combined Both Sides PNG) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 1. Download PDF (Standard A4 Page, Front & Back side-by-side) */}
+              <button
+                onClick={() => handleDownloadPdf()}
+                disabled={downloadingMode !== null}
+                className="bg-[#1e3a8a] hover:bg-[#172554] text-white text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
+                title="Download official print-ready PDF on A4 sheet (Front & Back side-by-side, 70 x 100 mm)"
+              >
+                {downloadingMode === "pdf" ? (
+                  <>
+                    <span className="animate-spin text-sm">⏳</span>
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText size={16} />
+                    <span>Download PDF</span>
+                  </>
+                )}
+              </button>
 
-            {/* 2. Download PNG (Both Sides) */}
-            <button
-              onClick={() => handleDownloadImage("both")}
-              disabled={downloading || downloadingPdf}
-              className="btn-primary-coral text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
-              title="Download clean high-resolution PNG showing Front and Back ID cards side-by-side"
-            >
-              {downloading ? (
-                <>
-                  <span className="animate-spin text-sm">⏳</span>
-                  <span>Saving Image...</span>
-                </>
-              ) : (
-                <>
-                  <Download size={16} />
-                  <span>Download PNG (Both Sides)</span>
-                </>
-              )}
-            </button>
+              {/* 2. Both Sides (PNG) */}
+              <button
+                onClick={() => handleDownloadImage("both", "share")}
+                disabled={downloadingMode !== null}
+                className="btn-primary-coral text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer w-full text-center"
+                title="Download Front & Back cards side-by-side on a clean sheet for quick sharing"
+              >
+                {downloadingMode === "both" ? (
+                  <>
+                    <span className="animate-spin text-sm">⏳</span>
+                    <span>Saving Both Sides...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    <span>Both Sides (PNG)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Row 2: Print-Ready Single Sides (Square Corners, Tight Crop, 300 DPI) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 3. Front Side (PNG) */}
+              <button
+                onClick={() => handleDownloadImage("front", "print")}
+                disabled={downloadingMode !== null}
+                className="bg-white hover:bg-[#fff7ed] text-[#ea580c] border border-[#fed7aa] hover:border-[#ea580c] text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xs hover:shadow-md disabled:opacity-50 transition-all cursor-pointer w-full text-center"
+                title="Download Front side card (tight crop, rounded corners, 300 DPI)"
+              >
+                {downloadingMode === "front_print" || downloadingMode === "front_share" ? (
+                  <>
+                    <span className="animate-spin text-sm">⏳</span>
+                    <span>Saving Front...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    <span>Front Side (PNG)</span>
+                  </>
+                )}
+              </button>
+
+              {/* 4. Back Side (PNG) */}
+              <button
+                onClick={() => handleDownloadImage("back", "print")}
+                disabled={downloadingMode !== null}
+                className="bg-white hover:bg-[#fff7ed] text-[#ea580c] border border-[#fed7aa] hover:border-[#ea580c] text-xs sm:text-sm py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xs hover:shadow-md disabled:opacity-50 transition-all cursor-pointer w-full text-center"
+                title="Download Back side card (tight crop, rounded corners, 300 DPI)"
+              >
+                {downloadingMode === "back_print" || downloadingMode === "back_share" ? (
+                  <>
+                    <span className="animate-spin text-sm">⏳</span>
+                    <span>Saving Back...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    <span>Back Side (PNG)</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </div>

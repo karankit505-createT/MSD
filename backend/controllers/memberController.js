@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Member = require("../models/Member");
+const IncompleteLead = require("../models/IncompleteLead");
 const CardSetting = require("../models/CardSetting");
 const cloudinary = require("../config/cloudinary");
 const jwt = require("jsonwebtoken");
@@ -81,13 +82,231 @@ const getStateCode = (stateName) => {
   return map[stateName] || stateName.slice(0, 2).toUpperCase();
 };
 
+// PIN Code Prefix Validation Maps
+const STATE_PIN_PREFIXES = {
+  "Andaman and Nicobar Islands": ["74"],
+  "Andhra Pradesh": ["51", "52", "53"],
+  "Arunachal Pradesh": ["79"],
+  "Assam": ["78"],
+  "Bihar": ["80", "81", "82", "83", "84", "85"],
+  "Chandigarh": ["16"],
+  "Chhattisgarh": ["49"],
+  "Dadra and Nagar Haveli and Daman and Diu": ["39"],
+  "Delhi": ["11"],
+  "Goa": ["40"],
+  "Gujarat": ["36", "37", "38", "39"],
+  "Haryana": ["12", "13"],
+  "Himachal Pradesh": ["17"],
+  "Jammu and Kashmir": ["18", "19"],
+  "Jharkhand": ["81", "82", "83"],
+  "Karnataka": ["56", "57", "58", "59"],
+  "Kerala": ["67", "68", "69"],
+  "Ladakh": ["19"],
+  "Lakshadweep": ["68"],
+  "Madhya Pradesh": ["45", "46", "47", "48"],
+  "Maharashtra": ["40", "41", "42", "43", "44"],
+  "Manipur": ["79"],
+  "Meghalaya": ["79"],
+  "Mizoram": ["79"],
+  "Nagaland": ["79"],
+  "Odisha": ["75", "76", "77"],
+  "Puducherry": ["60"],
+  "Punjab": ["14", "15", "16"],
+  "Rajasthan": ["30", "31", "32", "33", "34"],
+  "Sikkim": ["73"],
+  "Tamil Nadu": ["60", "61", "62", "63", "64"],
+  "Telangana": ["50"],
+  "Tripura": ["79"],
+  "Uttar Pradesh": ["20", "21", "22", "23", "24", "25", "26", "27", "28"],
+  "Uttarakhand": ["24", "26"],
+  "West Bengal": ["70", "71", "72", "73", "74"],
+};
+
+const DISTRICT_PIN_PREFIXES = {
+  // Karnataka
+  "Bengaluru Urban": ["560"],
+  "Bengaluru Rural": ["562"],
+  "Kolar": ["563"],
+  "Chikkaballapur": ["562", "563"],
+  "Ramanagara": ["562"],
+  "Tumakuru": ["572"],
+  "Mysuru": ["570", "571"],
+  "Mandya": ["571"],
+  "Chamarajanagar": ["571"],
+  "Hassan": ["573"],
+  "Dakshina Kannada": ["574", "575"],
+  "Udupi": ["576"],
+  "Chikkamagaluru": ["577"],
+  "Chitradurga": ["577"],
+  "Davanagere": ["577"],
+  "Shivamogga": ["577"],
+  "Ballari": ["583"],
+  "Vijayanagara": ["583"],
+  "Koppal": ["583"],
+  "Raichur": ["584"],
+  "Dharwad": ["580"],
+  "Gadag": ["582"],
+  "Haveri": ["581"],
+  "Uttara Kannada": ["581"],
+  "Belagavi": ["590", "591"],
+  "Bagalkot": ["587"],
+  "Vijayapura": ["586"],
+  "Kalaburagi": ["585"],
+  "Yadgir": ["585"],
+  "Bidar": ["585"],
+  "Kodagu": ["571"],
+
+  // Delhi
+  "Central Delhi": ["110"],
+  "East Delhi": ["110"],
+  "New Delhi": ["110"],
+  "North Delhi": ["110"],
+  "North East Delhi": ["110"],
+  "North West Delhi": ["110"],
+  "Shahdara": ["110"],
+  "South Delhi": ["110"],
+  "South East Delhi": ["110"],
+  "South West Delhi": ["110"],
+  "West Delhi": ["110"],
+
+  // Maharashtra
+  "Mumbai City": ["400"],
+  "Mumbai Suburban": ["400"],
+  "Thane": ["400", "401"],
+  "Palghar": ["401"],
+  "Raigad": ["402", "410"],
+  "Pune": ["411", "412"],
+  "Nagpur": ["440", "441"],
+  "Nashik": ["422", "423"],
+  "Kolhapur": ["416"],
+  "Solapur": ["413"],
+  "Aurangabad": ["431"],
+  "Chhatrapati Sambhajinagar": ["431"],
+  "Amravati": ["444"],
+
+  // Tamil Nadu
+  "Chennai": ["600"],
+  "Coimbatore": ["641"],
+  "Madurai": ["625"],
+  "Tiruchirappalli": ["620"],
+  "Salem": ["636"],
+  "Tirunelveli": ["627"],
+  "Erode": ["638"],
+  "Vellore": ["632"],
+  "Kanchipuram": ["603", "631"],
+  "Chengalpattu": ["603"],
+  "Tiruvallur": ["601", "602"],
+
+  // Telangana
+  "Hyderabad": ["500"],
+  "Ranga Reddy": ["500", "501"],
+  "Medchal-Malkajgiri": ["500", "501"],
+  "Warangal": ["506"],
+  "Hanamkonda": ["506"],
+  "Karimnagar": ["505"],
+  "Nizamabad": ["503"],
+
+  // Andhra Pradesh
+  "Visakhapatnam": ["530", "531"],
+  "Vijayawada": ["520"],
+  "NTR": ["520", "521"],
+  "Krishna": ["521"],
+  "Guntur": ["522"],
+  "Tirupati": ["517"],
+  "Chittoor": ["517"],
+  "Kurnool": ["518"],
+  "Anantapur": ["515"],
+
+  // West Bengal
+  "Kolkata": ["700"],
+  "Howrah": ["711"],
+  "North 24 Parganas": ["700", "743"],
+  "South 24 Parganas": ["700", "743"],
+  "Darjeeling": ["734"],
+
+  // Gujarat
+  "Ahmedabad": ["380", "382"],
+  "Surat": ["394", "395"],
+  "Vadodara": ["390", "391"],
+  "Rajkot": ["360"],
+  "Bhavnagar": ["364"],
+  "Gandhinagar": ["382"],
+
+  // Rajasthan
+  "Jaipur": ["302", "303"],
+  "Jodhpur": ["342"],
+  "Udaipur": ["313"],
+  "Kota": ["324", "325"],
+  "Bikaner": ["334"],
+  "Ajmer": ["305"],
+
+  // Uttar Pradesh
+  "Lucknow": ["226"],
+  "Kanpur Nagar": ["208"],
+  "Kanpur Dehat": ["209"],
+  "Varanasi": ["221"],
+  "Prayagraj": ["211"],
+  "Agra": ["282"],
+  "Gautam Buddha Nagar": ["201"],
+  "Ghaziabad": ["201"],
+  "Meerut": ["250"],
+  "Gorakhpur": ["273"],
+  "Bareilly": ["243"],
+  "Aligarh": ["202"],
+
+  // Kerala
+  "Thiruvananthapuram": ["695"],
+  "Ernakulam": ["682", "683"],
+  "Kozhikode": ["673"],
+  "Thrissur": ["680"],
+  "Kollam": ["691"],
+  "Kannur": ["670"],
+
+  // Chandigarh
+  "Chandigarh": ["160"],
+
+  // Bihar
+  "Patna": ["800", "801"],
+  "Gaya": ["823"],
+  "Muzaffarpur": ["842"],
+  "Bhagalpur": ["812"],
+
+  // Madhya Pradesh
+  "Bhopal": ["462"],
+  "Indore": ["452"],
+  "Gwalior": ["474"],
+  "Jabalpur": ["482"],
+
+  // Punjab
+  "Ludhiana": ["141"],
+  "Amritsar": ["143"],
+  "Jalandhar": ["144"],
+  "Patiala": ["147"],
+
+  // Haryana
+  "Gurugram": ["122"],
+  "Faridabad": ["121"],
+  "Panipat": ["132"],
+  "Ambala": ["133", "134"],
+  "Karnal": ["132"],
+
+  // Odisha
+  "Khordha (Bhubaneswar)": ["751"],
+  "Cuttack": ["753"],
+  "Puri": ["752"],
+
+  // Assam
+  "Kamrup Metropolitan (Guwahati)": ["781"],
+};
+
 // Helper: Convert string to clean Title Case for official identity documents
 const toTitleCase = (str) => {
   if (!str || typeof str !== "string") return "";
-  const cleaned = str.trim().replace(/\s+/g, " ");
-  // If the string was submitted in all uppercase (e.g. "DEEPU KUMAR"), convert to lower then capitalize
-  const base = cleaned === cleaned.toUpperCase() ? cleaned.toLowerCase() : cleaned;
-  return base.replace(/(?:^|\s|[-/.,'#])([a-z\u00C0-\u024F])/g, (char) => char.toUpperCase());
+  return str
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/(?:^|\s|[-/.,'#])([a-z\u00C0-\u024F])/g, (char) => char.toUpperCase());
 };
 
 // Generate Unique Registration ID (India / National Level Cadre)
@@ -152,6 +371,9 @@ const validateRegistrationData = (body, file) => {
   const gender = (body.gender || "").trim();
   const mobile = (body.mobile || "").trim();
   const whatsapp = (body.whatsapp || "").trim();
+  const emergencyNumber = (body.emergencyNumber || "").trim();
+  const emergencyRelation = (body.emergencyRelation || "").trim();
+  const VALID_RELATIONS = ["Father", "Mother", "Spouse", "Sibling", "Friend", "Other"];
   const email = (body.email || "").trim();
   const bloodGroup = (body.bloodGroup || "").trim();
   const state = (body.state || "").trim();
@@ -161,22 +383,28 @@ const validateRegistrationData = (body, file) => {
   const wing = (body.wing || "").trim();
   const pledgeAccepted = body.pledgeAccepted === true || body.pledgeAccepted === "true";
 
-  // Full Name
+  // Full Name (minimum 3 letters, alphabets and spaces only)
   if (!fullName) {
     errors.fullName = "Full Name is required.";
-  } else if (fullName.length < 3) {
-    errors.fullName = "Full Name must be at least 3 characters long.";
-  } else if (!/^[a-zA-Z\s.']{3,70}$/.test(fullName)) {
-    errors.fullName = "Full Name should contain only letters, dots, and spaces.";
+  } else {
+    const lettersOnly = fullName.replace(/[^a-zA-Z]/g, "");
+    if (lettersOnly.length < 3) {
+      errors.fullName = "Full Name must contain at least 3 letters.";
+    } else if (!/^[a-zA-Z\s]+$/.test(fullName)) {
+      errors.fullName = "Full Name should contain alphabets and spaces only.";
+    }
   }
 
-  // Father's / Husband's Name
+  // Father's / Husband's Name (minimum 3 letters, alphabets and spaces only)
   if (!fatherName) {
     errors.fatherName = "Father's / Husband's Name is required.";
-  } else if (fatherName.length < 3) {
-    errors.fatherName = "Father's / Husband's Name must be at least 3 characters long.";
-  } else if (!/^[a-zA-Z\s.']{3,70}$/.test(fatherName)) {
-    errors.fatherName = "Father's / Husband's Name should contain only letters, dots, and spaces.";
+  } else {
+    const lettersOnly = fatherName.replace(/[^a-zA-Z]/g, "");
+    if (lettersOnly.length < 3) {
+      errors.fatherName = "Father's / Husband's Name must contain at least 3 letters.";
+    } else if (!/^[a-zA-Z\s]+$/.test(fatherName)) {
+      errors.fatherName = "Father's / Husband's Name should contain alphabets and spaces only.";
+    }
   }
 
   // Date of Birth & Age Eligibility
@@ -212,6 +440,22 @@ const validateRegistrationData = (body, file) => {
     errors.whatsapp = "WhatsApp Number must be a valid 10-digit number.";
   }
 
+  // Emergency Contact Number (Compulsory, 10 digits, cannot match primary mobile)
+  if (!emergencyNumber) {
+    errors.emergencyNumber = "Emergency contact number is required.";
+  } else if (!/^[6-9]\d{9}$/.test(emergencyNumber)) {
+    errors.emergencyNumber = "Emergency contact number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.";
+  } else if (emergencyNumber === mobile) {
+    errors.emergencyNumber = "Emergency contact number cannot be the same as primary mobile number.";
+  }
+
+  // Emergency Relation (Compulsory, must be from allowed list)
+  if (!emergencyRelation) {
+    errors.emergencyRelation = "Please select relationship with emergency contact.";
+  } else if (!VALID_RELATIONS.includes(emergencyRelation)) {
+    errors.emergencyRelation = "Please select a valid relation option (Father, Mother, Spouse, Sibling, Friend, or Other).";
+  }
+
   // Email (optional, but validated if provided)
   if (email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
     errors.email = "Please enter a valid email address.";
@@ -241,11 +485,24 @@ const validateRegistrationData = (body, file) => {
     errors.address = "Please provide complete address (at least 8 characters).";
   }
 
-  // Postal PIN Code (6 digits starting with 1-9)
+  // Postal PIN Code (6 digits and must match state / district)
   if (!pincode) {
     errors.pincode = "Postal PIN Code is required.";
-  } else if (!/^[1-9][0-9]{5}$/.test(pincode)) {
+  } else if (!/^\d{6}$/.test(pincode) || pincode.startsWith("0")) {
     errors.pincode = "PIN Code must be a valid 6-digit Indian postal code.";
+  } else {
+    if (state && STATE_PIN_PREFIXES[state]) {
+      const validStatePrefixes = STATE_PIN_PREFIXES[state];
+      if (!validStatePrefixes.some((pref) => pincode.startsWith(pref))) {
+        errors.pincode = `PIN code does not match selected state ${state}.`;
+      }
+    }
+    if (district && district !== "Other District" && DISTRICT_PIN_PREFIXES[district]) {
+      const validDistPrefixes = DISTRICT_PIN_PREFIXES[district];
+      if (!validDistPrefixes.some((pref) => pincode.startsWith(pref))) {
+        errors.pincode = `PIN code does not match selected district ${district}.`;
+      }
+    }
   }
 
   // Primary Cadre Wing
@@ -287,10 +544,14 @@ const registerMember = async (req, res) => {
       gender,
       mobile,
       whatsapp,
+      emergencyNumber,
+      emergencyRelation,
       email,
       bloodGroup,
       state,
       district,
+      assembly,
+      zone,
       taluk,
       address,
       pincode,
@@ -341,6 +602,8 @@ const registerMember = async (req, res) => {
     const sanitizedFullName = toTitleCase(fullName);
     const sanitizedFatherName = toTitleCase(fatherName);
     const sanitizedDistrict = toTitleCase(district);
+    const sanitizedAssembly = assembly ? toTitleCase(String(assembly).trim()) : "";
+    const sanitizedZone = zone ? toTitleCase(String(zone).trim()) : "";
     const sanitizedTaluk = taluk ? toTitleCase(taluk) : "";
     const sanitizedProfession = profession ? toTitleCase(profession) : "";
     const sanitizedAddress = toTitleCase(address);
@@ -354,13 +617,17 @@ const registerMember = async (req, res) => {
       age: finalAge,
       gender,
       mobile,
-      whatsapp: whatsapp || mobile,
+      whatsapp: whatsapp || "",
+      emergencyNumber: emergencyNumber || "",
+      emergencyRelation: emergencyRelation || "",
       email: email || "",
-      bloodGroup: bloodGroup || "Not Specified",
+      bloodGroup: bloodGroup || "",
       photoUrl,
       photoPublicId,
       state,
       district: sanitizedDistrict,
+      assembly: sanitizedAssembly,
+      zone: sanitizedZone,
       taluk: sanitizedTaluk,
       address: sanitizedAddress,
       pincode,
@@ -371,6 +638,20 @@ const registerMember = async (req, res) => {
     });
 
     const saved = await newMember.save();
+
+    // Mark incomplete lead as recovered in CRM
+    try {
+      const cleanPhone = String(saved.mobile || "").replace(/\D/g, "").slice(-10);
+      await IncompleteLead.findOneAndUpdate(
+        { mobile: cleanPhone },
+        {
+          $set: {
+            status: "RECOVERED",
+            lastStepLabel: "Completed & Registered (Recovered via Web)",
+          },
+        }
+      );
+    } catch (recErr) {}
 
     // Sync to file
     await syncToLocalBackupFile();
@@ -426,10 +707,10 @@ const checkMobileExists = async (req, res) => {
 // ─── 2. Get All Members (Admin with Filters & Search) ─────────────────────────
 const getAllMembers = async (req, res) => {
   try {
-    const { search, state, wing, status, page, limit } = req.query;
+    const { search, state, district, wing, status, page, limit, startDate, endDate, sortField, sortOrder } = req.query;
 
     const parsedPage = Math.max(1, parseInt(page, 10) || 1);
-    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
 
     const query = {};
 
@@ -439,8 +720,24 @@ const getAllMembers = async (req, res) => {
     if (state && state !== "ALL") {
       query.state = state;
     }
+    if (district && district !== "ALL") {
+      query.district = district;
+    }
     if (wing && wing !== "ALL") {
       query.wing = wing;
+    }
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
     }
     if (search && typeof search === "string" && search.trim() !== "") {
       const cleanSearch = search.trim().slice(0, 100);
@@ -448,7 +745,9 @@ const getAllMembers = async (req, res) => {
       const regex = new RegExp(escaped, "i");
       query.$or = [
         { fullName: regex },
+        { fatherName: regex },
         { mobile: regex },
+        { emergencyNumber: regex },
         { registrationId: regex },
         { district: regex },
         { email: regex },
@@ -458,10 +757,47 @@ const getAllMembers = async (req, res) => {
     const totalCount = await Member.countDocuments(query);
     const totalPages = Math.ceil(totalCount / parsedLimit) || 1;
 
-    const members = await Member.find(query)
-      .sort({ createdAt: -1 })
-      .skip((parsedPage - 1) * parsedLimit)
-      .limit(parsedLimit);
+    let members;
+    if (sortField) {
+      const order = sortOrder === "desc" || sortOrder === "-1" ? -1 : 1;
+      let sortObj = {};
+      if (sortField === "fullName") {
+        sortObj = { fullName: order };
+      } else if (sortField === "createdAt") {
+        sortObj = { createdAt: order };
+      } else if (sortField === "status") {
+        sortObj = { status: order, createdAt: -1 };
+      } else {
+        sortObj = { [sortField]: order };
+      }
+      members = await Member.find(query)
+        .collation({ locale: "en", strength: 2 })
+        .sort(sortObj)
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit);
+    } else {
+      // Default sort: Pending first, newest first (so newly registered members immediately appear at the top)
+      members = await Member.aggregate([
+        { $match: query },
+        {
+          $addFields: {
+            statusSortWeight: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$status", "PENDING"] }, then: 0 },
+                  { case: { $eq: ["$status", "APPROVED"] }, then: 1 },
+                  { case: { $eq: ["$status", "REJECTED"] }, then: 2 },
+                ],
+                default: 3,
+              },
+            },
+          },
+        },
+        { $sort: { statusSortWeight: 1, createdAt: -1 } },
+        { $skip: (parsedPage - 1) * parsedLimit },
+        { $limit: parsedLimit },
+      ]);
+    }
 
     // Overall Statistics for KPI cards & Analytics
     const totalAll = await Member.countDocuments();
@@ -723,12 +1059,16 @@ const formatMemberCardData = (member) => {
     age: member.age || null,
     gender: member.gender || "Male",
     mobile: member.mobile || "",
-    whatsapp: member.whatsapp || member.mobile || "",
+    whatsapp: member.whatsapp || "",
+    emergencyNumber: member.emergencyNumber || "",
+    emergencyRelation: member.emergencyRelation || "",
     email: member.email || "",
-    bloodGroup: member.bloodGroup || "Not Specified",
+    bloodGroup: member.bloodGroup || "",
     photoUrl: member.photoUrl || "",
     state: member.state || "",
     district: member.district || "",
+    assembly: member.assembly || "",
+    zone: member.zone || "",
     taluk: member.taluk || "",
     address: member.address || "",
     pincode: member.pincode || "",
@@ -970,7 +1310,7 @@ const proxyPhoto = (req, res) => {
 // ─── 9. Card Seal & Signature Settings ─────────────────────────────────────
 const DEFAULT_CARD_SETTINGS = {
   customSealUrl: "",
-  customSignatureUrl: "",
+  customSignatureUrl: "https://res.cloudinary.com/wq9znxvs/image/upload/v1793442693/msd/brand/signature.png",
   signatoryName: "Authorized Signatory",
   signatoryTitle: "Central Executive Committee",
 };
