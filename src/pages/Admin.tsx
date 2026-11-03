@@ -1575,16 +1575,9 @@ const Admin = () => {
 
           {activeAdminTab === "directory" ? (
             <>
-              {/* KPI Statistics Row (Clickable to Filter) */}
+              {/* KPI Statistics Row (Static Metric Cards) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-3">
-            <div
-              onClick={() => setFilterStatus("ALL")}
-              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
-                filterStatus === "ALL"
-                  ? "border-[#FF6200] ring-1.5 ring-[#FF6200]/30 bg-[#faf6ee]/50"
-                  : "border-hairline hover:border-[#FF6200]/50"
-              }`}
-            >
+            <div className="bg-white border border-hairline p-3 sm:p-3.5 rounded-xl shadow-2xs select-none">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10.5px] font-bold text-muted-editorial uppercase tracking-wider">
                   Total Registrations
@@ -1593,18 +1586,10 @@ const Admin = () => {
               </div>
               <div className="flex items-baseline justify-between">
                 <div className="font-serif text-2xl font-black text-ink leading-none">{stats.total}</div>
-                <span className="text-[10px] text-[#FF6200] font-semibold hover:underline">View All →</span>
               </div>
             </div>
 
-            <div
-              onClick={() => setFilterStatus("PENDING")}
-              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
-                filterStatus === "PENDING"
-                  ? "border-amber-500 ring-1.5 ring-amber-400/40 bg-amber-50/70"
-                  : "border-amber-200/80 hover:border-amber-400 bg-amber-50/20"
-              }`}
-            >
+            <div className="bg-amber-50/20 border border-amber-200/80 p-3 sm:p-3.5 rounded-xl shadow-2xs select-none">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10.5px] font-bold text-amber-800 uppercase tracking-wider">
                   Pending Verification
@@ -1613,18 +1598,10 @@ const Admin = () => {
               </div>
               <div className="flex items-baseline justify-between">
                 <div className="font-serif text-2xl font-black text-amber-900 leading-none">{stats.pending}</div>
-                <span className="text-[10px] text-amber-700 font-semibold hover:underline">Filter Pending →</span>
               </div>
             </div>
 
-            <div
-              onClick={() => setFilterStatus("APPROVED")}
-              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
-                filterStatus === "APPROVED"
-                  ? "border-emerald-500 ring-1.5 ring-emerald-400/40 bg-emerald-50/70"
-                  : "border-emerald-200/80 hover:border-emerald-400 bg-emerald-50/20"
-              }`}
-            >
+            <div className="bg-emerald-50/20 border border-emerald-200/80 p-3 sm:p-3.5 rounded-xl shadow-2xs select-none">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider">
                   Approved Members
@@ -1633,18 +1610,10 @@ const Admin = () => {
               </div>
               <div className="flex items-baseline justify-between">
                 <div className="font-serif text-2xl font-black text-emerald-900 leading-none">{stats.approved}</div>
-                <span className="text-[10px] text-emerald-700 font-semibold hover:underline">Filter Approved →</span>
               </div>
             </div>
 
-            <div
-              onClick={() => setFilterStatus("REJECTED")}
-              className={`bg-white border p-3 sm:p-3.5 rounded-xl shadow-2xs cursor-pointer transition-all hover:shadow-xs hover:-translate-y-0.5 select-none ${
-                filterStatus === "REJECTED"
-                  ? "border-rose-500 ring-1.5 ring-rose-400/40 bg-rose-50/70"
-                  : "border-rose-200/80 hover:border-rose-400 bg-rose-50/20"
-              }`}
-            >
+            <div className="bg-rose-50/20 border border-rose-200/80 p-3 sm:p-3.5 rounded-xl shadow-2xs select-none">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10.5px] font-bold text-rose-800 uppercase tracking-wider">
                   Rejected
@@ -1653,7 +1622,6 @@ const Admin = () => {
               </div>
               <div className="flex items-baseline justify-between">
                 <div className="font-serif text-2xl font-black text-rose-900 leading-none">{stats.rejected}</div>
-                <span className="text-[10px] text-rose-700 font-semibold hover:underline">Filter Rejected →</span>
               </div>
             </div>
           </div>
